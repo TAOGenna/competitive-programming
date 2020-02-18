@@ -39,7 +39,7 @@ bfs
 
 - [ ] 6151 — Beehives (4) //[NICE] //Search for shortest cycle
 
-- [x] <a href="https://devskill.com/CodingProblems/ViewProblem/60">https://devskill.com/CodingProblems/ViewProblem/60</a>
+- [ ] <a href="https://devskill.com/CodingProblems/ViewProblem/60">https://devskill.com/CodingProblems/ViewProblem/60</a>
 
 - [ ] <a href="https://devskill.com/CodingProblems/ViewProblem/150">https://devskill.com/CodingProblems/ViewProblem/150</a>
 
@@ -107,7 +107,7 @@ bfs-grid
 
 big
 ===
-- [x] <a href="https://devskill.com/CodingProblems/ViewProblem/394">https://devskill.com/CodingProblems/ViewProblem/394</a> (2) //Multiplication (or math)
+- [ ] <a href="https://devskill.com/CodingProblems/ViewProblem/394">https://devskill.com/CodingProblems/ViewProblem/394</a> (2) //Multiplication (or math)
 
 - [ ] <a href="//codeforces.com/contest/66/problem/A">http://codeforces.com/contest/66/problem/A</a> (2) //Big + iffs + implementation
 
@@ -231,11 +231,11 @@ big
 
 - [ ] <a href="http://www.spoj.com/problems/NUMPLAY/">http://www.spoj.com/problems/NUMPLAY/</a> (3) //With DP
 
-- [x] <a href="http://www.spoj.com/problems/IWGBS/">http://www.spoj.com/problems/IWGBS/</a> (3) //Fibonacci 10^4
+- [ ] <a href="http://www.spoj.com/problems/IWGBS/">http://www.spoj.com/problems/IWGBS/</a> (3) //Fibonacci 10^4
 
 - [ ] <a href="http://www.spoj.com/problems/PUCMM025/">http://www.spoj.com/problems/PUCMM025/</a> (2) //Divisibility by 1 → 9
 
-- [x] <a href="http://www.spoj.com/problems/CSQUARE/">http://www.spoj.com/problems/CSQUARE/</a> (3) //Converse + Power 
+- [ ] <a href="http://www.spoj.com/problems/CSQUARE/">http://www.spoj.com/problems/CSQUARE/</a> (3) //Converse + Power 
 
 - [ ] <a href="//codeforces.com/contest/17/problem/D">http://codeforces.com/contest/17/problem/D</a> (5) //B^(N-1)*(B-1)%C [B/N are big]
 
