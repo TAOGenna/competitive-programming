@@ -1072,13 +1072,6 @@ divisors
 
 dp
 ==
-- [ ] <a href="http://www.spoj.com/problems/ADAZOO/">http://www.spoj.com/problems/ADAZOO/</a>
-
-- [ ] <a href="http://www.spoj.com/problems/ADASEQEN/">http://www.spoj.com/problems/ADASEQEN/</a>
-
-- [ ] <a href="http://www.spoj.com/problems/ADAMOLD/">http://www.spoj.com/problems/ADAMOLD/</a>
-
-- [ ] <a href="http://www.spoj.com/problems/ADASALE/">http://www.spoj.com/problems/ADASALE/</a>
 
 - [ ] <a href="//codeforces.com/gym/101889">http://codeforces.com/gym/101889</a> <a href="4">E</a>
 
