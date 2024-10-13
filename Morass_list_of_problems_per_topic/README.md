@@ -1,27 +1,116 @@
+By morass
 # Table of Contents
 
-| 1. [Automat](#automat)               | 2. [Ford](#ford)                    | 3. [Grid](#grid)                    |
-| 4. [Binary_search](#binary_search)    | 5. [Bitset](#bitset)                | 6. [Bridges](#bridges)              |
-| 7. [Force](#force)                   | 8. [Centroid](#centroid)            | 9. [Coloring](#coloring)            |
-| 10. [Combinatorics](#combinatorics)   | 11. [Constructive](#constructive)   | 12. [Digits](#digits)               |
-| 13. [Dijkstra](#dijkstra)            | 14. [Divide_conquer](#divide_conquer)| 15. [Divisors](#divisors)           |
-| 16. [Euler_function](#euler_function)| 17. [Euler_tour](#euler_tour)       | 18. [Factorization](#factorization) |
-| 19. [Fenwick](#fenwick)              | 20. [Like](#like)                   | 21. [Warshall](#warshall)           |
-| 22. [Friedvaldalgorithm](#friedvaldalgorithm) | 23. [Game_theory](#game_theory) | 24. [Geometry](#geometry)           |
-| 25. [Greedy](#greedy)                | 26. [Implementation](#implementation)| 27. [Exclusion](#exclusion)         |
-| 28. [Interactive](#interactive)      | 29. [Isomorphism](#isomorphism)     | 30. [Josephus](#josephus)           |
-| 31. [Lcs_subsequence](#lcs_subsequence) | 32. [Matching](#matching)         | 33. [Matrix](#matrix)               |
-| 34. [Matrix_exponentiation](#matrix_exponentiation) | 35. [Median](#median) | 36. [Meet_in_middle](#meet_in_middle)|
-| 37. [Hard](#hard)                    | 38. [Number_rectangle](#number_rectangle)| 39. [Number_theory](#number_theory) |
-| 40. [Observation](#observation)      | 41. [Offline](#offline)             | 42. [Palindromes](#palindromes)     |
-| 43. [Matching](#matching)            | 44. [Permutations](#permutations)   | 45. [Persistent_segment_tree](#persistent_segment_tree) |
-| 46. [Preprocess](#preprocess)        | 47. [Count](#count)                 | 48. [Testing](#testing)             |
-| 49. [Probability](#probability)      | 50. [Recursion](#recursion)         | 51. [Segment_tree](#segment_tree)   |
-| 52. [Sequences](#sequences)          | 53. [Simulation](#simulation)       | 54. [Sorting](#sorting)             |
-| 55. [Spanning_tree](#spanning_tree)  | 56. [Strings](#strings)             | 57. [Suffix_array](#suffix_array)   |
-| 58. [Ternary_search](#ternary_search)| 59. [Dp](#dp)                       | 60. [Trie_bit](#trie_bit)           |
-| 61. [Trie_string](#trie_string)      | 62. [Pointers](#pointers)           | 63. [Wavelet_tree](#wavelet_tree)   |
-| 64. [Zfunction](#zfunction)          |
+<table>
+<tr>
+  <td>1. <a href="#automat">Automat</a></td>
+  <td>2. <a href="#ford">Ford</a></td>
+  <td>3. <a href="#grid">Grid</a></td>
+</tr>
+<tr>
+  <td>4. <a href="#binary_search">Binary_search</a></td>
+  <td>5. <a href="#bitset">Bitset</a></td>
+  <td>6. <a href="#bridges">Bridges</a></td>
+</tr>
+<tr>
+  <td>7. <a href="#force">Force</a></td>
+  <td>8. <a href="#centroid">Centroid</a></td>
+  <td>9. <a href="#coloring">Coloring</a></td>
+</tr>
+<tr>
+  <td>10. <a href="#combinatorics">Combinatorics</a></td>
+  <td>11. <a href="#constructive">Constructive</a></td>
+  <td>12. <a href="#digits">Digits</a></td>
+</tr>
+<tr>
+  <td>13. <a href="#dijkstra">Dijkstra</a></td>
+  <td>14. <a href="#divide_conquer">Divide_conquer</a></td>
+  <td>15. <a href="#divisors">Divisors</a></td>
+</tr>
+<tr>
+  <td>16. <a href="#euler_function">Euler_function</a></td>
+  <td>17. <a href="#euler_tour">Euler_tour</a></td>
+  <td>18. <a href="#factorization">Factorization</a></td>
+</tr>
+<tr>
+  <td>19. <a href="#fenwick">Fenwick</a></td>
+  <td>20. <a href="#like">Like</a></td>
+  <td>21. <a href="#warshall">Warshall</a></td>
+</tr>
+<tr>
+  <td>22. <a href="#friedvaldalgorithm">Friedvaldalgorithm</a></td>
+  <td>23. <a href="#game_theory">Game_theory</a></td>
+  <td>24. <a href="#geometry">Geometry</a></td>
+</tr>
+<tr>
+  <td>25. <a href="#greedy">Greedy</a></td>
+  <td>26. <a href="#implementation">Implementation</a></td>
+  <td>27. <a href="#exclusion">Exclusion</a></td>
+</tr>
+<tr>
+  <td>28. <a href="#interactive">Interactive</a></td>
+  <td>29. <a href="#isomorphism">Isomorphism</a></td>
+  <td>30. <a href="#josephus">Josephus</a></td>
+</tr>
+<tr>
+  <td>31. <a href="#lcs_subsequence">Lcs_subsequence</a></td>
+  <td>32. <a href="#matching">Matching</a></td>
+  <td>33. <a href="#matrix">Matrix</a></td>
+</tr>
+<tr>
+  <td>34. <a href="#matrix_exponentiation">Matrix_exponentiation</a></td>
+  <td>35. <a href="#median">Median</a></td>
+  <td>36. <a href="#meet_in_middle">Meet_in_middle</a></td>
+</tr>
+<tr>
+  <td>37. <a href="#hard">Hard</a></td>
+  <td>38. <a href="#number_rectangle">Number_rectangle</a></td>
+  <td>39. <a href="#number_theory">Number_theory</a></td>
+</tr>
+<tr>
+  <td>40. <a href="#observation">Observation</a></td>
+  <td>41. <a href="#offline">Offline</a></td>
+  <td>42. <a href="#palindromes">Palindromes</a></td>
+</tr>
+<tr>
+  <td>43. <a href="#matching">Matching</a></td>
+  <td>44. <a href="#permutations">Permutations</a></td>
+  <td>45. <a href="#persistent_segment_tree">Persistent_segment_tree</a></td>
+</tr>
+<tr>
+  <td>46. <a href="#preprocess">Preprocess</a></td>
+  <td>47. <a href="#count">Count</a></td>
+  <td>48. <a href="#testing">Testing</a></td>
+</tr>
+<tr>
+  <td>49. <a href="#probability">Probability</a></td>
+  <td>50. <a href="#recursion">Recursion</a></td>
+  <td>51. <a href="#segment_tree">Segment_tree</a></td>
+</tr>
+<tr>
+  <td>52. <a href="#sequences">Sequences</a></td>
+  <td>53. <a href="#simulation">Simulation</a></td>
+  <td>54. <a href="#sorting">Sorting</a></td>
+</tr>
+<tr>
+  <td>55. <a href="#spanning_tree">Spanning_tree</a></td>
+  <td>56. <a href="#strings">Strings</a></td>
+  <td>57. <a href="#suffix_array">Suffix_array</a></td>
+</tr>
+<tr>
+  <td>58. <a href="#ternary_search">Ternary_search</a></td>
+  <td>59. <a href="#dp">Dp</a></td>
+  <td>60. <a href="#trie_bit">Trie_bit</a></td>
+</tr>
+<tr>
+  <td>61. <a href="#trie_string">Trie_string</a></td>
+  <td>62. <a href="#pointers">Pointers</a></td>
+  <td>63. <a href="#wavelet_tree">Wavelet_tree</a></td>
+</tr>
+<tr>
+  <td>64. <a href="#zfunction">Zfunction</a></td>
+</tr>
+</table>
 
 
 
