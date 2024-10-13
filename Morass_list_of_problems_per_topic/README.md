@@ -1,3 +1,31 @@
+# Table of Contents
+
+| 1. [Automat](#automat)               | 2. [Ford](#ford)                    | 3. [Grid](#grid)                    |
+| 4. [Binary_search](#binary_search)    | 5. [Bitset](#bitset)                | 6. [Bridges](#bridges)              |
+| 7. [Force](#force)                   | 8. [Centroid](#centroid)            | 9. [Coloring](#coloring)            |
+| 10. [Combinatorics](#combinatorics)   | 11. [Constructive](#constructive)   | 12. [Digits](#digits)               |
+| 13. [Dijkstra](#dijkstra)            | 14. [Divide_conquer](#divide_conquer)| 15. [Divisors](#divisors)           |
+| 16. [Euler_function](#euler_function)| 17. [Euler_tour](#euler_tour)       | 18. [Factorization](#factorization) |
+| 19. [Fenwick](#fenwick)              | 20. [Like](#like)                   | 21. [Warshall](#warshall)           |
+| 22. [Friedvaldalgorithm](#friedvaldalgorithm) | 23. [Game_theory](#game_theory) | 24. [Geometry](#geometry)           |
+| 25. [Greedy](#greedy)                | 26. [Implementation](#implementation)| 27. [Exclusion](#exclusion)         |
+| 28. [Interactive](#interactive)      | 29. [Isomorphism](#isomorphism)     | 30. [Josephus](#josephus)           |
+| 31. [Lcs_subsequence](#lcs_subsequence) | 32. [Matching](#matching)         | 33. [Matrix](#matrix)               |
+| 34. [Matrix_exponentiation](#matrix_exponentiation) | 35. [Median](#median) | 36. [Meet_in_middle](#meet_in_middle)|
+| 37. [Hard](#hard)                    | 38. [Number_rectangle](#number_rectangle)| 39. [Number_theory](#number_theory) |
+| 40. [Observation](#observation)      | 41. [Offline](#offline)             | 42. [Palindromes](#palindromes)     |
+| 43. [Matching](#matching)            | 44. [Permutations](#permutations)   | 45. [Persistent_segment_tree](#persistent_segment_tree) |
+| 46. [Preprocess](#preprocess)        | 47. [Count](#count)                 | 48. [Testing](#testing)             |
+| 49. [Probability](#probability)      | 50. [Recursion](#recursion)         | 51. [Segment_tree](#segment_tree)   |
+| 52. [Sequences](#sequences)          | 53. [Simulation](#simulation)       | 54. [Sorting](#sorting)             |
+| 55. [Spanning_tree](#spanning_tree)  | 56. [Strings](#strings)             | 57. [Suffix_array](#suffix_array)   |
+| 58. [Ternary_search](#ternary_search)| 59. [Dp](#dp)                       | 60. [Trie_bit](#trie_bit)           |
+| 61. [Trie_string](#trie_string)      | 62. [Pointers](#pointers)           | 63. [Wavelet_tree](#wavelet_tree)   |
+| 64. [Zfunction](#zfunction)          |
+
+
+
+
 aho
 ===
 - [ ] <a href="http://www.spoj.com/problems/ADAJOBS/">http://www.spoj.com/problems/ADAJOBS/</a>
