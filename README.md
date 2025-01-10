@@ -1,5 +1,5 @@
 # Competitive Programming Library
-Here is list the best resources I found during my journey in competitive programming during my undergraduate years. I hope you like it :)
+Here I list the best resources I found during my journey in competitive programming. I hope you like it :)
 
 ## Table of Contents 
 * [Problem Collection](#problem-collection)
