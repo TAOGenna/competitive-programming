@@ -232,13 +232,19 @@ location / {
 }
 ```
 
-Ready-made files are in `deploy/`:
+Ready-made files are in `deploy/` — see `deploy/README.md`:
 
 | file | |
 |---|---|
 | `vrating.service` | systemd unit — restarts on failure, runs read-only except its cache |
-| `nginx.conf` | TLS proxy with `proxy_buffering off` (required for SSE) and a 32 MB body limit |
+| `cloudflared.yml` | Cloudflare Tunnel: your domain and TLS, no public IP, no nginx |
+| `nginx.conf` | plain TLS proxy instead, with `proxy_buffering off` (required for SSE) |
 | `prewarm.cron` | weekly refresh for newly finished contests |
+
+Whatever sits in front, it must not buffer: results are Server-Sent Events, and a buffering
+proxy holds the whole reply until it finishes, making a working page look frozen. Cloudflare
+additionally 524s an origin that is silent for 100 s, so the server sends a keepalive every
+20 s during phases that do silent work.
 
 ```bash
 sudo cp deploy/vrating.service /etc/systemd/system/

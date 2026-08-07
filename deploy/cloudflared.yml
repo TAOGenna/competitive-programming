@@ -1,0 +1,28 @@
+# Cloudflare Tunnel. Put this at /etc/cloudflared/config.yml
+#
+#   cloudflared tunnel login
+#   cloudflared tunnel create vrating
+#   cloudflared tunnel route dns vrating vrating.yourdomain.com
+#   sudo cloudflared service install
+#
+# The box needs no public IP, no open ports and no TLS certificate of its own:
+# cloudflared dials out to Cloudflare, and Cloudflare terminates TLS at the edge.
+# With this, deploy/nginx.conf is unnecessary.
+
+tunnel: vrating
+credentials-file: /etc/cloudflared/vrating.json
+
+ingress:
+  - hostname: vrating.yourdomain.com
+    service: http://127.0.0.1:8770
+    originRequest:
+      # Results are Server-Sent Events. Cloudflare gives up on an origin that has sent
+      # nothing for 100 seconds (error 524); the app emits a keepalive every 20 s during
+      # its silent phases, and these settings keep the connection open long enough for
+      # a cold upsolve scan to finish.
+      noTLSVerify: false
+      connectTimeout: 30s
+      tcpKeepAlive: 30s
+      noHappyEyeballs: false
+      disableChunkedEncoding: false   # chunked encoding is what makes streaming work
+  - service: http_status:404

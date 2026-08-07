@@ -6,9 +6,11 @@ lands instead of staring at a spinner for a minute.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import threading
+import time
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -57,6 +59,39 @@ class Handler(BaseHTTPRequestHandler):
         chunk = f"event: {name}\ndata: {json.dumps(payload)}\n\n".encode()
         self.wfile.write(chunk)
         self.wfile.flush()
+
+    def _sse_headers(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        # Honoured by nginx and by Cloudflare Tunnel: do not buffer this response.
+        self.send_header("X-Accel-Buffering", "no")
+        self.send_header("Connection", "close")
+        self.end_headers()
+
+    @contextlib.contextmanager
+    def _heartbeat(self, every=20.0):
+        """Emit an SSE comment while a phase is doing silent work.
+
+        Cloudflare closes a proxied request with 524 if the origin sends nothing for 100
+        seconds, and a cold cache can spend minutes fetching standings without producing an
+        event. A comment line keeps the stream alive and is ignored by EventSource.
+        """
+        stop = threading.Event()
+
+        def beat():
+            while not stop.wait(every):
+                try:
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+                except Exception:
+                    return
+        t = threading.Thread(target=beat, daemon=True)
+        t.start()
+        try:
+            yield
+        finally:
+            stop.set()
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -122,11 +157,7 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {"error": "not found"})
 
     def _upsolve(self, handle, parts=None, real=None, primary=None, prefetched=None):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "close")
-        self.end_headers()
+        self._sse_headers()
         if not _scans.acquire(timeout=120):
             self._event("failed", {"error": "server busy, try again in a moment"})
             self.close_connection = True
@@ -142,8 +173,9 @@ class Handler(BaseHTTPRequestHandler):
             virtual_ratings = {e["contest_id"]: e["old_rating"] for e in career["entries"]}
             self._event("meta", {"handle": " + ".join(handles), "rating": career["rating"]})
 
-            rounds, solved = upsolve.history(handles, virtual_ratings=virtual_ratings,
-                                             prefetched=prefetched)
+            with self._heartbeat():          # this phase can be silent for minutes when cold
+                rounds, solved = upsolve.history(handles, virtual_ratings=virtual_ratings,
+                                                 prefetched=prefetched)
             self._event("meta", {"handle": " + ".join(handles), "rating": career["rating"],
                                  "rounds": len(rounds), "already_solved": len(solved)})
 
@@ -199,11 +231,7 @@ class Handler(BaseHTTPRequestHandler):
         self._stream(handles, parts=parts, real=real, primary=primary)
 
     def _stream(self, handle, parts=None, real=None, primary=None):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "close")
-        self.end_headers()
+        self._sse_headers()
         entries: list[dict] = []
         if not _scans.acquire(timeout=120):
             self._event("failed", {"error": "server busy, try again in a moment"})
@@ -216,7 +244,8 @@ class Handler(BaseHTTPRequestHandler):
             if real is None:
                 real = engine.real_curve(primary)
             if parts is None:
-                parts = engine.virtual_participations(handles)
+                with self._heartbeat():
+                    parts = engine.virtual_participations(handles)
             self._event("meta", {"handle": " + ".join(handles), "handles": handles,
                                  "real_handle": primary, "total": len(parts), "real": real})
             for entry in engine.iter_career(handles, participations=parts):
