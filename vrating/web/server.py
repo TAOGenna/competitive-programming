@@ -119,7 +119,7 @@ class Handler(BaseHTTPRequestHandler):
             })
 
         if url.path == "/api/blogs":
-            return self._blogs()
+            return self._blogs(refresh=bool(query.get("refresh")))
 
         if url.path == "/api/stream":
             handle = (query.get("handle") or [""])[0].strip()
@@ -159,14 +159,14 @@ class Handler(BaseHTTPRequestHandler):
 
         return self._send(404, {"error": "not found"})
 
-    def _blogs(self):
+    def _blogs(self, refresh: bool = False):
         """The reading shelf. Streams: the first build fetches ~117 posts at 1 req/s."""
         self._sse_headers()
         try:
             def progress(done, total, label):
                 self._event("progress", {"done": done, "total": total, "label": label})
             with self._heartbeat():
-                items = blogs.shelf(progress=progress)
+                items = blogs.shelf(progress=progress, refresh=refresh)
             self._event("done", {"items": items, "topics": blogs.topics(items),
                                  "authors": blogs.author_ratings(items)})
         except BrokenPipeError:

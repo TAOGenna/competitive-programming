@@ -35,10 +35,16 @@ def _text(markup: str, limit: int = 320) -> str:
     return out[:limit].rstrip() + ("…" if len(out) > limit else "")
 
 
-def _fetch_source() -> str:
+def _fetch_source(refresh: bool = False) -> str:
+    """The list itself. `refresh` re-reads it from GitHub, keeping per-post metadata.
+
+    Adding a blog upstream should not mean discarding 476 KB of already-fetched posts, so a
+    refresh only re-pulls this file; entries already enriched stay cached and only genuinely
+    new links cost a request.
+    """
     path = DATA / "blogs" / "source.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
+    if path.exists() and not refresh:
         return path.read_text()
     with urllib.request.urlopen(SOURCE, timeout=60) as r:
         body = r.read().decode("utf-8", "replace")
@@ -97,9 +103,9 @@ def _enrich(item: dict) -> dict:
     return {**item, **meta}
 
 
-def shelf(progress=None) -> list[dict]:
+def shelf(progress=None, refresh: bool = False) -> list[dict]:
     """The whole list, enriched. Cached; the first build fetches at ~1 req/s."""
-    items = parse(_fetch_source())
+    items = parse(_fetch_source(refresh))
     out = []
     for n, item in enumerate(items):
         if progress:

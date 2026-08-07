@@ -63,3 +63,29 @@ def test_the_real_list_parses_and_is_mostly_codeforces():
     assert sum(1 for i in items if i["entry_id"]) > 0.8 * len(items)
     assert all(i["url"].startswith("http") for i in items)
     assert len({i["topic"] for i in items}) >= 6
+
+
+def test_refresh_rereads_the_list_but_keeps_fetched_posts(tmp_path, monkeypatch):
+    """Adding a blog upstream should not throw away already-fetched post metadata."""
+    import io
+    monkeypatch.setattr(blogs, "DATA", tmp_path)
+    served = [SAMPLE, SAMPLE + "- [ ] [New one](https://codeforces.com/blog/entry/999)\n"]
+    calls = []
+
+    def fake_urlopen(url, timeout=None):
+        calls.append(url)
+        return io.BytesIO(served[min(len(calls) - 1, 1)].encode())
+
+    monkeypatch.setattr(blogs.urllib.request, "urlopen", fake_urlopen)
+
+    assert len(blogs.parse(blogs._fetch_source())) == 4          # first read, one fetch
+    assert len(blogs.parse(blogs._fetch_source())) == 4          # cached, no fetch
+    assert len(calls) == 1
+
+    assert len(blogs.parse(blogs._fetch_source(refresh=True))) == 5   # re-read picks it up
+    assert len(calls) == 2
+
+    # a post fetched earlier is still on disk and is not re-requested
+    (tmp_path / "blogs" / "88474.json").write_text('{"title":"cached","score":1}')
+    item = next(i for i in blogs.parse(blogs._fetch_source()) if i["entry_id"] == 88474)
+    assert blogs._enrich(item)["title"] == "cached"

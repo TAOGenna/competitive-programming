@@ -136,6 +136,9 @@ tbody tr{animation:in .28s ease both}
 .rd-sort button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .rd-hide{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
 .rd-hide input{width:auto;padding:0;margin:0}
+#rd-refresh{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+            padding:7px 12px;font-size:11px;margin-left:auto}
+#rd-refresh:hover:not(:disabled){border-color:var(--ink);color:var(--ink)}
 .rd-topics{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
 .rd-topics button{background:var(--panel);color:var(--ink-2);border:1px solid var(--rule);
                   padding:5px 11px;font-family:var(--body);font-size:12px;letter-spacing:0;
@@ -243,6 +246,7 @@ tbody tr{animation:in .28s ease both}
         <button type="button" data-sort="list">List order</button>
       </div>
       <label class="rd-hide"><input type="checkbox" id="rd-unread"> hide read</label>
+      <button type="button" id="rd-refresh" title="re-read the list from GitHub; already-fetched posts are kept">Refresh list</button>
     </div>
     <div id="rd-topics" class="rd-topics"></div>
     <div id="rd-grid" class="rd-grid"></div>
@@ -673,10 +677,11 @@ function rdTopics(topics){
   });
 }
 
-async function rdLoad(){
-  if(rdLoaded)return;
-  $("rd-foot").textContent="Fetching the reading list…";
-  const res=await fetch("/api/blogs");
+async function rdLoad(refresh){
+  if(rdLoaded&&!refresh)return;
+  $("rd-refresh").disabled=true;
+  $("rd-foot").textContent=refresh?"Re-reading the list from GitHub…":"Fetching the reading list…";
+  const res=await fetch("/api/blogs"+(refresh?"?refresh=1":""));
   await streamEvents(res,(name,d)=>{
     if(name==="progress"){
       $("rd-foot").textContent=`Reading Codeforces metadata ${d.done}/${d.total}… (first run only)`;
@@ -687,7 +692,9 @@ async function rdLoad(){
       rdTopics(d.topics);rdCards();
     }
   });
+  $("rd-refresh").disabled=false;
 }
+$("rd-refresh").addEventListener("click",()=>rdLoad(true));
 $("rd-q").addEventListener("input",rdCards);
 $("rd-unread").addEventListener("change",rdCards);
 document.querySelectorAll(".rd-sort button").forEach(b=>{

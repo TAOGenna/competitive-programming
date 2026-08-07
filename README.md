@@ -185,6 +185,8 @@ search titles and authors and tags, and mark things read (kept in your browser, 
 checkboxes in the source list).
 
 First open fetches the metadata at ~1 req/s and then caches it — about two minutes once, 476 KB.
+**Refresh list** re-reads the list from GitHub to pick up blogs you have added since, keeping
+every post already fetched; only genuinely new links cost a request.
 
 ## Configuration
 
