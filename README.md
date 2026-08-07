@@ -17,10 +17,14 @@ there. Ones you attempted and failed are marked apart from ones you never opened
 problems that most people *at your level* solved and you did not. See below for the method.
 
 ```bash
-pip install -r requirements.txt      # numpy; the server itself is standard library
-python3 -m vrating.sources.prewarm   # fills the cache: ~35 min, ~16 GB down, ~600 MB kept
-python3 -m vrating.web.server        # http://127.0.0.1:8770
+pip install -r requirements.txt         # numpy; the server itself is standard library
+python3 -m vrating.sources.prewarm YOU  # warm just your own contests: minutes, tens of MB
+python3 -m vrating.web.server           # http://127.0.0.1:8770
 ```
+
+Passing handles warms only the rounds those accounts have sat. Leave them off and it warms
+every rated contest instead — ~35 min and ~16 GB — which is only worth it if other people
+will use the instance. Either way it is optional: the cache fills itself on demand.
 
 Needs Python 3.10+. It runs without the prewarm, just slowly — that step is install, not
 tuning. `GET /healthz` tells you where it stands:

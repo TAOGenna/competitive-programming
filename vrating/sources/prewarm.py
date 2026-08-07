@@ -21,6 +21,12 @@ At 100 visitors an hour that is ~300 calls/hour, or 0.08 req/s -- comfortably in
 limit, where an unwarmed cache would blow through it with a single user.
 
 Resumable: anything already cached is skipped. Safe to re-run to pick up new contests.
+
+For a single user there is no reason to warm the whole archive: pass handles and only the
+contests those accounts have actually sat are fetched.
+
+    python3 -m vrating.sources.prewarm                 # everything, for a public instance
+    python3 -m vrating.sources.prewarm your_handle     # just yours, minutes not hours
 """
 from __future__ import annotations
 
@@ -71,8 +77,55 @@ def prewarm(log=print, limit: int | None = None, workers: int = WORKERS) -> tupl
     return counts["done"], counts["skipped"]
 
 
+def prewarm_for(handles, log=print, workers: int = WORKERS) -> tuple[int, int]:
+    """Warm only the contests these handles have actually sat.
+
+    Running this for yourself is a couple of hundred contests, not eighteen hundred -- a few
+    minutes and a few tens of MB instead of half an hour and 16 GB. Everything the app can
+    show you concerns rounds you took part in, so the rest of the archive earns nothing until
+    somebody else visits.
+    """
+    from ..career import engine, upsolve
+
+    wanted: set[int] = set()
+    for handle in handles:
+        for p in engine.virtual_participations([handle]):
+            wanted.add(p["contest_id"])
+        try:
+            for h in src.user_rating(handle):
+                wanted.add(h["contestId"])
+        except src.CodeforcesError:
+            pass
+    log(f"{len(handles)} handle(s) -> {len(wanted)} contests to warm")
+
+    counts = {"done": 0, "skipped": 0}
+
+    def one(cid):
+        try:
+            if src.rating_changes(cid) is None:
+                counts["skipped"] += 1
+            else:
+                src.standings(cid)
+                counts["done"] += 1
+        except Exception:                                  # noqa: BLE001 - keep going
+            counts["skipped"] += 1
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(one, sorted(wanted)))
+    return counts["done"], counts["skipped"]
+
+
 def main():
     log = lambda m: print(m, flush=True)
+    handles = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if handles:
+        log(f"warming just the contests {', '.join(handles)} have sat…")
+        done, skipped = prewarm_for(handles, log)
+        log(f"cached {done} contests, skipped {skipped}")
+        log("building the prior-contest index…")
+        archive.build_index(log)
+        log("done")
+        return
     log("warming rating changes and standings (resumable; ctrl-c is safe)…")
     done, skipped = prewarm(log)
     log(f"standings cached for {done} contests, {skipped} skipped")

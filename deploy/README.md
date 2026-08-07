@@ -1,5 +1,49 @@
 # Deploying
 
+## Just for you, reachable from anywhere
+
+The common case: you want it on a URL you can open from any machine, but nobody else should
+see it. Tunnel puts it on the internet; **Access is what keeps it yours**.
+
+```bash
+# 1. a small box — 1 GB RAM and a few GB of disk is plenty
+git clone git@github.com:TAOGenna/vrating.git /srv/vrating && cd /srv/vrating
+pip install -r requirements.txt
+
+# 2. warm only the contests YOU have sat, not all 1,780
+python3 -m vrating.sources.prewarm your_handle        # minutes, tens of MB
+
+# 3. run it
+sudo cp deploy/vrating.service /etc/systemd/system/ && sudo systemctl enable --now vrating
+
+# 4. put it on your domain, with no open ports
+cloudflared tunnel login && cloudflared tunnel create vrating
+cloudflared tunnel route dns vrating vrating.yourdomain.com
+sudo cp deploy/cloudflared.yml /etc/cloudflared/config.yml   # edit the hostname
+sudo cloudflared service install
+```
+
+Then lock it down, in the dashboard under **Zero Trust → Access controls → Applications**:
+
+1. **Create new application → Self-hosted**, hostname `vrating.yourdomain.com`
+2. Add one policy:
+
+   | Action | Rule type | Selector | Value |
+   |---|---|---|---|
+   | Allow | Include | Emails | `you@example.com` |
+
+An application with no policy denies every request, so there is no window where the URL is
+open. You get a one-time PIN or your identity provider at the edge; the box itself never sees
+an unauthenticated request. Free on the Zero Trust plan at personal scale.
+
+Sizing for one user is much smaller than for a public instance: the targeted prewarm fetches
+only the rounds you have actually sat — a couple of hundred contests rather than 1,780, tens
+of megabytes rather than 600 MB. Any cheap VPS covers it.
+
+---
+
+## The rest of this file is for a public instance
+
 Two shapes, depending on whether you want to run the box yourself.
 
 ## Cloudflare Tunnel (recommended if you have a Cloudflare account)
