@@ -64,7 +64,7 @@ def main(argv=None) -> int:
     threading.Thread(target=lambda: (time.sleep(0.6), webbrowser.open(url)),
                      daemon=True).start()
     try:
-        server.main(port=port, host="127.0.0.1")
+        server.main(port=port, host="127.0.0.1", banner=False)
     except KeyboardInterrupt:
         print("\nstopped")
     return 0

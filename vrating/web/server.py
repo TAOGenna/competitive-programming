@@ -264,12 +264,13 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
 
 
-def main(port: int | None = None, host: str | None = None):
+def main(port: int | None = None, host: str | None = None, banner: bool = True):
     port = port or int(os.environ.get("VRATING_PORT", "8770"))
     host = host or os.environ.get("VRATING_HOST", "127.0.0.1")
     shown = host if host not in ("0.0.0.0", "::") else "0.0.0.0"
-    print(f"vrating -> http://{shown}:{port}  (max {MAX_CONCURRENT_SCANS} concurrent scans)",
-          flush=True)
+    if banner:      # `python -m vrating` prints its own, nicer one
+        print(f"vrating -> http://{shown}:{port}  (max {MAX_CONCURRENT_SCANS} concurrent scans)",
+              flush=True)
     ThreadingHTTPServer((host, port), Handler).serve_forever()
 
 
