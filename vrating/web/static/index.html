@@ -16,6 +16,7 @@
   --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}   /* a display rule otherwise beats the attribute */
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--body);
      -webkit-font-smoothing:antialiased}
@@ -122,12 +123,58 @@ tbody tr{animation:in .28s ease both}
               text-align:right}
 #ac-go{padding:9px 16px}
 
+/* ---- reading shelf ----
+   Cards lead with the community score: these are "the most interesting blogs", and that
+   score is the only measurable version of that claim. Everything else stays quiet. */
+.rd-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:18px 0 14px}
+#rd-q{width:260px;font-family:var(--body);font-size:13px;padding:8px 11px;
+      border:1px solid var(--rule);background:var(--panel)}
+.rd-sort{display:flex}
+.rd-sort button{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+                border-right:0;padding:7px 12px;font-size:11px}
+.rd-sort button:last-child{border-right:1px solid var(--rule)}
+.rd-sort button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rd-hide{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+.rd-hide input{width:auto;padding:0;margin:0}
+.rd-topics{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.rd-topics button{background:var(--panel);color:var(--ink-2);border:1px solid var(--rule);
+                  padding:5px 11px;font-family:var(--body);font-size:12px;letter-spacing:0;
+                  text-transform:none;font-weight:400}
+.rd-topics button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rd-topics button b{font-family:var(--mono);font-size:11px;opacity:.55;margin-left:5px}
+.rd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.card{position:relative;display:flex;flex-direction:column;gap:7px;padding:15px 16px 14px;
+      border:1px solid var(--rule);background:var(--panel);text-decoration:none;color:inherit;
+      transition:border-color .12s,transform .12s}
+.card:hover{border-color:var(--ink);transform:translateY(-2px)}
+.card.read{opacity:.5}
+.card .eyebrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+   font-family:var(--cond);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+   color:var(--muted)}
+.card .score{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);
+             font-variant-numeric:tabular-nums;flex:0 0 auto}
+.card h3{margin:0;font-size:14.5px;line-height:1.35;font-weight:600;
+         display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card p{margin:0;font-size:12.5px;line-height:1.5;color:var(--muted);
+        display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;
+            margin-top:auto;padding-top:9px;font-size:11.5px;color:var(--muted)}
+.card .by{font-family:var(--mono);font-weight:600}
+.card .tags{display:flex;gap:5px;flex-wrap:wrap;overflow:hidden;max-height:18px}
+.card .tags i{font-style:normal;font-family:var(--cond);font-size:9.5px;letter-spacing:.1em;
+   text-transform:uppercase;border:1px solid var(--rule);padding:1px 5px;color:var(--muted)}
+.card .tick{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:50%;
+   border:1px solid var(--rule);background:var(--panel);color:var(--muted);font-size:12px;
+   line-height:20px;text-align:center;cursor:pointer;opacity:0;transition:opacity .12s}
+.card:hover .tick,.card.read .tick{opacity:1}
+.card .tick:hover{border-color:var(--ink);color:var(--ink)}
+.rd-empty{color:var(--muted);font-size:13px;padding:30px 0}
+
 /* ---- upsolve ---- */
 #up-wrap{margin-top:38px;padding-top:26px;border-top:1px solid var(--rule)}
 #up-msg{margin-left:14px;font-family:var(--mono);font-size:12px;color:var(--muted)}
 #up-lede{margin:18px 0 14px}
 #up-tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
-#up-tags[hidden]{display:none}
 .tg{display:flex;align-items:baseline;gap:7px;border:1px solid var(--rule);
     background:var(--panel);padding:4px 10px;font-size:12px}
 .tg b{font-family:var(--mono);font-weight:600}
@@ -177,6 +224,7 @@ tbody tr{animation:in .28s ease both}
     <div class="tabs" role="tablist">
       <button type="button" id="tab-cf" class="on" role="tab" aria-selected="true">Codeforces</button>
       <button type="button" id="tab-ac" role="tab" aria-selected="false">AtCoder</button>
+      <button type="button" id="tab-rd" role="tab" aria-selected="false">Reading</button>
     </div>
     <form id="f">
       <input id="h" placeholder="handle — or several, comma separated" autocomplete="off" spellcheck="false" autocapitalize="off">
@@ -185,6 +233,21 @@ tbody tr{animation:in .28s ease both}
   </div>
 
   <div id="msg">Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.</div>
+
+  <div id="rd-panel" hidden>
+    <div class="rd-bar">
+      <input id="rd-q" placeholder="search titles, authors, tags" autocomplete="off">
+      <div class="rd-sort">
+        <button type="button" data-sort="score" class="on">Most upvoted</button>
+        <button type="button" data-sort="new">Newest</button>
+        <button type="button" data-sort="list">List order</button>
+      </div>
+      <label class="rd-hide"><input type="checkbox" id="rd-unread"> hide read</label>
+    </div>
+    <div id="rd-topics" class="rd-topics"></div>
+    <div id="rd-grid" class="rd-grid"></div>
+    <p class="ac-note" id="rd-foot"></p>
+  </div>
 
   <div id="ac-panel" hidden>
     <p class="ac-note">AtCoder keeps standings behind a login, so it can't read your placing.
@@ -547,24 +610,115 @@ async function run(handle){
   finally{ $("go").disabled=false; }
 }
 
+// ---------- reading shelf ----------
+let shelf=[], authors={}, rdTopic=null, rdSort="score", rdLoaded=false;
+const READ_KEY="vrating.read";
+const readSet=()=>new Set(JSON.parse(localStorage.getItem(READ_KEY)||"[]"));
+const setRead=(url,on)=>{const s=readSet();on?s.add(url):s.delete(url);
+  localStorage.setItem(READ_KEY,JSON.stringify([...s]));};
+
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function rdCards(){
+  const q=$("rd-q").value.trim().toLowerCase();
+  const hideRead=$("rd-unread").checked;
+  const read=readSet();
+  let list=shelf.filter(b=>{
+    if(rdTopic&&b.topic!==rdTopic)return false;
+    if(hideRead&&read.has(b.url))return false;
+    if(!q)return true;
+    return [b.title,b.label,b.author,(b.tags||[]).join(" "),b.topic]
+      .filter(Boolean).join(" ").toLowerCase().includes(q);
+  });
+  if(rdSort==="score")list=[...list].sort((a,b)=>(b.score??-1)-(a.score??-1));
+  if(rdSort==="new")list=[...list].sort((a,b)=>(b.created??0)-(a.created??0));
+
+  $("rd-grid").innerHTML=list.length?list.map(b=>{
+    const isRead=read.has(b.url);
+    const when=b.created?new Date(b.created*1000).getFullYear():"";
+    const who=b.author
+      ? `<span class="by" style="color:${band(authors[b.author]??0)}">${esc(b.author)}</span>`
+      : `<span class="by">${esc(b.host)}</span>`;
+    return `<a class="card${isRead?" read":""}" href="${esc(b.url)}" target="_blank"
+       rel="noopener" data-url="${esc(b.url)}">
+      <span class="tick" title="${isRead?"mark unread":"mark read"}">${isRead?"✓":"+"}</span>
+      <div class="eyebrow"><span>${esc(b.topic)}</span>
+        ${b.score!=null?`<span class="score">${b.score>0?"+":""}${b.score}</span>`:""}</div>
+      <h3>${esc(b.title||b.label)}</h3>
+      ${b.excerpt?`<p>${esc(b.excerpt)}</p>`:`<p>${esc(b.host)}</p>`}
+      <div class="foot">${who}
+        <span class="tags">${(b.tags||[]).slice(0,3).map(t=>`<i>${esc(t)}</i>`).join("")}
+        ${when?`<i>${when}</i>`:""}</span></div>
+    </a>`;}).join("")
+    : `<div class="rd-empty">Nothing matches.</div>`;
+
+  // the tick toggles read without following the link
+  $("rd-grid").querySelectorAll(".tick").forEach(el=>{
+    el.onclick=ev=>{ev.preventDefault();ev.stopPropagation();
+      const card=el.closest(".card"), url=card.dataset.url;
+      setRead(url,!readSet().has(url)); rdCards();};
+  });
+  const n=list.length, total=shelf.length, done=shelf.filter(b=>read.has(b.url)).length;
+  $("rd-foot").innerHTML=`Showing <b>${n}</b> of ${total} · ${done} marked read · `+
+    `scores are Codeforces' own community votes · `+
+    `<a href="https://github.com/TAOGenna/competitive-programming/tree/master/Interesting_blogs" target="_blank" rel="noopener">source list</a>`;
+}
+
+function rdTopics(topics){
+  const all=`<button class="${rdTopic?"":"on"}" data-t="">Everything <b>${shelf.length}</b></button>`;
+  $("rd-topics").innerHTML=all+topics.map(t=>
+    `<button class="${rdTopic===t.topic?"on":""}" data-t="${esc(t.topic)}">${esc(t.topic)} <b>${t.count}</b></button>`).join("");
+  $("rd-topics").querySelectorAll("button").forEach(b=>{
+    b.onclick=()=>{rdTopic=b.dataset.t||null;rdTopics(topics);rdCards();};
+  });
+}
+
+async function rdLoad(){
+  if(rdLoaded)return;
+  $("rd-foot").textContent="Fetching the reading list…";
+  const res=await fetch("/api/blogs");
+  await streamEvents(res,(name,d)=>{
+    if(name==="progress"){
+      $("rd-foot").textContent=`Reading Codeforces metadata ${d.done}/${d.total}… (first run only)`;
+    } else if(name==="failed"){
+      $("rd-foot").textContent="Could not load the list: "+d.error;
+    } else if(name==="done"){
+      shelf=d.items;authors=d.authors||{};rdLoaded=true;
+      rdTopics(d.topics);rdCards();
+    }
+  });
+}
+$("rd-q").addEventListener("input",rdCards);
+$("rd-unread").addEventListener("change",rdCards);
+document.querySelectorAll(".rd-sort button").forEach(b=>{
+  b.onclick=()=>{rdSort=b.dataset.sort;
+    document.querySelectorAll(".rd-sort button").forEach(x=>x.classList.toggle("on",x===b));
+    rdCards();};
+});
+
 // ---------- AtCoder ----------
 let acSittings=[];
 
 function setPlatform(p){
   platform=p;
-  $("tab-cf").classList.toggle("on",p==="cf");
-  $("tab-ac").classList.toggle("on",p==="ac");
-  $("tab-cf").setAttribute("aria-selected",p==="cf");
-  $("tab-ac").setAttribute("aria-selected",p==="ac");
+  for(const [id,key] of [["tab-cf","cf"],["tab-ac","ac"],["tab-rd","rd"]]){
+    $(id).classList.toggle("on",p===key);
+    $(id).setAttribute("aria-selected",p===key);
+  }
+  const reading=p==="rd";
+  $("f").hidden=reading;
+  $("rd-panel").hidden=!reading;
+  $("ac-panel").hidden=true;$("out").hidden=true;$("ac-list").innerHTML="";
+  if(reading){ $("msg").textContent=""; rdLoad(); return; }
   $("h").placeholder=p==="ac"?"atcoder handle":"handle — or several, comma separated";
   $("go").textContent=p==="ac"?"Find rounds":"Replay";
-  $("ac-panel").hidden=true;$("out").hidden=true;$("ac-list").innerHTML="";
   $("msg").textContent=p==="ac"
     ? "Enter your AtCoder handle to find the rounds you've sat outside the live window."
     : "Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.";
 }
 $("tab-cf").addEventListener("click",()=>setPlatform("cf"));
 $("tab-ac").addEventListener("click",()=>setPlatform("ac"));
+$("tab-rd").addEventListener("click",()=>setPlatform("rd"));
 
 async function acFind(handle){
   $("go").disabled=true;$("msg").textContent="Reading your submission history…";

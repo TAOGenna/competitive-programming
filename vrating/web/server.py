@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, urlparse
 from dataclasses import asdict as _asdict
 
 from ..career import atcoder, engine, upsolve
-from ..sources import cf as src
+from ..sources import blogs, cf as src
 
 STATIC = Path(__file__).parent / "static"
 
@@ -118,6 +118,9 @@ class Handler(BaseHTTPRequestHandler):
                         else "run: python3 -m vrating.sources.prewarm",
             })
 
+        if url.path == "/api/blogs":
+            return self._blogs()
+
         if url.path == "/api/stream":
             handle = (query.get("handle") or [""])[0].strip()
             if not handle:
@@ -155,6 +158,25 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"error": str(exc)})
 
         return self._send(404, {"error": "not found"})
+
+    def _blogs(self):
+        """The reading shelf. Streams: the first build fetches ~117 posts at 1 req/s."""
+        self._sse_headers()
+        try:
+            def progress(done, total, label):
+                self._event("progress", {"done": done, "total": total, "label": label})
+            with self._heartbeat():
+                items = blogs.shelf(progress=progress)
+            self._event("done", {"items": items, "topics": blogs.topics(items),
+                                 "authors": blogs.author_ratings(items)})
+        except BrokenPipeError:
+            pass
+        except Exception as exc:
+            try:
+                self._event("failed", {"error": str(exc)})
+            except BrokenPipeError:
+                pass
+        self.close_connection = True
 
     def _upsolve(self, handle, parts=None, real=None, primary=None, prefetched=None):
         self._sse_headers()

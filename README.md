@@ -169,6 +169,23 @@ without it the list is unusable.
 
 Tags are aggregated too, because a tag you keep missing says more than any single problem.
 
+## Reading shelf
+
+The third tab is a library of ~130 competitive-programming blogs, pulled from
+[TAOGenna/competitive-programming](https://github.com/TAOGenna/competitive-programming/tree/master/Interesting_blogs).
+
+That list is titles and links only, so rather than invent descriptions the cards use
+Codeforces' own `blogEntry.view`: the author's real title, their handle coloured by rank, the
+tags, the year, and an excerpt taken from the post itself. 117 of the 132 links live on
+Codeforces; the rest keep the list's own text and name their host.
+
+Cards sort by **community score**, which is the only measurable reading of "most interesting"
+— the top of the shelf is the most-upvoted post in the list, not an opinion. Filter by topic,
+search titles and authors and tags, and mark things read (kept in your browser, mirroring the
+checkboxes in the source list).
+
+First open fetches the metadata at ~1 req/s and then caches it — about two minutes once, 476 KB.
+
 ## Configuration
 
 | variable | |
