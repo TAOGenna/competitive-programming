@@ -52,13 +52,14 @@ def main(argv=None) -> int:
     if handles:
         url += "#" + handles[0]
 
-    print(f"vrating → {url}")
+    say = lambda m: print(m, flush=True)   # unbuffered: this banner is the only feedback
+    say(f"vrating → {url}")
     if handles:
-        print(f"  warming {', '.join(handles)} in the background…")
+        say(f"  warming {', '.join(handles)} in the background…")
         threading.Thread(target=_warm, args=(handles,), daemon=True).start()
     else:
-        print("  tip: pass your handle to warm its contests up front")
-    print("  ctrl-c to stop")
+        say("  tip: pass your handle to warm its contests up front")
+    say("  ctrl-c to stop")
 
     threading.Thread(target=lambda: (time.sleep(0.6), webbrowser.open(url)),
                      daemon=True).start()

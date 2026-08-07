@@ -17,14 +17,24 @@ there. Ones you attempted and failed are marked apart from ones you never opened
 problems that most people *at your level* solved and you did not. See below for the method.
 
 ```bash
-pip install -r requirements.txt         # numpy; the server itself is standard library
-python3 -m vrating.sources.prewarm YOU  # warm just your own contests: minutes, tens of MB
-python3 -m vrating.web.server           # http://127.0.0.1:8770
+make dev                 # sets up on first run, starts the server, opens the page
+make dev H=your_handle   # and warms that handle's contests in the background
 ```
 
-Passing handles warms only the rounds those accounts have sat. Leave them off and it warms
-every rated contest instead — ~35 min and ~16 GB — which is only worth it if other people
-will use the instance. Either way it is optional: the cache fills itself on demand.
+That is the whole thing. Python 3.10+ is the only prerequisite; the first run builds a
+virtualenv and installs numpy, and everything after starts in a second. `./run.sh` does the
+same if you would rather not use make.
+
+| | |
+|---|---|
+| `make dev` | start it |
+| `make test` | the offline tests |
+| `make test-all` | including the network-bound ones |
+| `make warm H=handle` | warm a handle's contests without starting the server |
+| `make clean` | drop the cache — it all re-fetches |
+
+Warming is optional: the cache fills itself as you use the app. Passing a handle just moves
+the waiting off your first page load.
 
 Needs Python 3.10+. It runs without the prewarm, just slowly — that step is install, not
 tuning. `GET /healthz` tells you where it stands:
