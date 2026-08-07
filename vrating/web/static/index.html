@@ -109,6 +109,11 @@ tbody tr{animation:in .28s ease both}
              font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
              font-weight:600;cursor:pointer}
 .tabs button.on{background:var(--ink);color:var(--paper)}
+.modes{display:flex;gap:0;margin:16px 0 0}
+.modes button{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+              border-right:0;padding:7px 13px;font-size:11px}
+.modes button:last-child{border-right:1px solid var(--rule)}
+.modes button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 #ac-panel{padding:4px 0 8px}
 .ac-note{color:var(--muted);font-size:12px;line-height:1.6;max-width:70ch;margin:6px 0 16px}
 #ac-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:8px 22px;
@@ -122,6 +127,10 @@ tbody tr{animation:in .28s ease both}
               border:1px solid var(--rule);background:var(--panel);color:var(--ink);
               text-align:right}
 #ac-go{padding:9px 16px}
+.ac-actions{display:flex;gap:10px;align-items:center}
+#ac-est{padding:9px 16px;background:var(--panel);color:var(--ink);border:1px solid var(--ink)}
+#ac-est:hover:not(:disabled){background:var(--rule-soft)}
+.ac-row input.guess{border-color:var(--ink);background:var(--rule-soft)}
 
 /* ---- reading shelf ----
    Cards lead with the community score: these are "the most interesting blogs", and that
@@ -238,6 +247,16 @@ tbody tr{animation:in .28s ease both}
     </form>
   </div>
 
+  <div class="modes" id="modes">
+    <button type="button" data-mode="virtual" class="on">Virtual rounds only</button>
+    <button type="button" data-mode="merged">Alongside my real contests</button>
+  </div>
+
+  <div class="modes" id="modes">
+    <button type="button" data-mode="virtual" class="on">Virtual rounds only</button>
+    <button type="button" data-mode="merged">Alongside my real contests</button>
+  </div>
+
   <div id="msg">Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.</div>
 
   <div id="rd-panel" hidden>
@@ -261,7 +280,10 @@ tbody tr{animation:in .28s ease both}
       These are the rounds you've solved problems from after they finished — fill in the rank
       you got and they'll be replayed in the order you sat them.</p>
     <div id="ac-list"></div>
-    <button type="button" id="ac-go">Replay these rounds</button>
+    <div class="ac-actions">
+      <button type="button" id="ac-est">Estimate ranks for me</button>
+      <button type="button" id="ac-go">Replay these rounds</button>
+    </div>
   </div>
 
   <div id="out" hidden>
@@ -320,6 +342,14 @@ const $=id=>document.getElementById(id);
 
 let entries=[], real=[], expected=0, manyAccounts=false, lastUsers=null;
 let alternates={}, actualFinal=null;
+let mergeReal=false;   // false: only virtual rounds. true: interleaved with real ones.
+document.querySelectorAll("#modes button").forEach(b=>{
+  b.onclick=()=>{
+    mergeReal=b.dataset.mode==="merged";
+    document.querySelectorAll("#modes button").forEach(x=>x.classList.toggle("on",x===b));
+    const h=$("h").value.trim(); if(h&&platform==="cf")run(h);
+  };
+});
 
 function el(tag,attrs,parent){
   const e=document.createElementNS(NS,tag);
@@ -744,6 +774,7 @@ function setPlatform(p){
   }
   const reading=p==="rd";
   $("f").hidden=reading;
+  $("modes").hidden=(p!=="cf");
   $("rd-panel").hidden=!reading;
   $("ac-panel").hidden=true;$("out").hidden=true;$("ac-list").innerHTML="";
   if(reading){ $("msg").textContent=""; rdLoad(); return; }
@@ -779,6 +810,33 @@ async function acFind(handle){
   }catch(err){ $("msg").textContent="Error: "+err.message; }
   finally{ $("go").disabled=false; }
 }
+
+$("ac-est").addEventListener("click",async()=>{
+  if(!acSittings.length)return;
+  $("ac-est").disabled=true;
+  $("msg").textContent="Rebuilding standings from public submissions…";
+  try{
+    const res=await fetch("/api/ac/estimate?handle="+encodeURIComponent(currentHandle));
+    await streamEvents(res,(name,d)=>{
+      if(name==="progress"){
+        $("msg").textContent=`Rebuilding ${d.done+1} of ${d.total} — ${d.label} `+
+          `(about a minute each the first time, then cached)`;
+      } else if(name==="failed"){ throw new Error(d.error);
+      } else if(name==="done"){
+        let n=0;
+        for(const [cid,rank] of Object.entries(d.ranks||{})){
+          const input=document.querySelector(`#ac-list input[data-c="${cid}"]`);
+          if(input&&!input.value){ input.value=rank; input.classList.add("guess"); n++; }
+        }
+        $("msg").textContent=n
+          ? `Filled ${n} rank${n>1?"s":""}. These are reconstructed, not official — the `+
+            `performance they imply lands within 25 points 92% of the time. Correct any you know.`
+          : "Could not place any sitting; type the ranks instead.";
+      }
+    });
+  }catch(err){ $("msg").textContent="Error: "+err.message; }
+  finally{ $("ac-est").disabled=false; }
+});
 
 $("ac-go").addEventListener("click",async()=>{
   const filled=[...document.querySelectorAll("#ac-list input")]

@@ -37,6 +37,7 @@ class Entry:
     delta: int
     confidence: str
     rated: bool
+    live: bool          # you actually competed in this one; the rest are virtual
     unsolved: list      # problem indexes left unsolved -- the upsolving list
     attempted: list     # of those, the ones you did submit to
 
@@ -103,6 +104,50 @@ def group_virtual(subs_by_handle) -> list[dict]:
     return sorted(by_contest.values(), key=lambda v: v["started"])
 
 
+def real_participations(handles) -> list[dict]:
+    """Rounds these accounts actually competed in, scored from their own standings row.
+
+    No submission fetch is needed: the row records what they solved and how many attempts
+    they burned, which is exactly what the rating calculation wants.
+    """
+    if isinstance(handles, str):
+        handles = [handles]
+    out = []
+    for handle in handles:
+        try:
+            history = src.user_rating(handle)
+        except src.CodeforcesError:
+            continue
+        for h in history:
+            cid = h["contestId"]
+            try:
+                st = src.standings(cid)
+            except src.CodeforcesError:
+                continue
+            if handle not in st["handles"]:
+                continue
+            i = st["handles"].index(handle)
+            out.append({"contest_id": cid, "started": h["ratingUpdateTimeSeconds"],
+                        "handle": handle, "submissions": [], "live": True,
+                        "points": float(st["points"][i]), "penalty": float(st["penalty"][i])})
+    return out
+
+
+def merged_participations(handles) -> list[dict]:
+    """Real and virtual rounds on one timeline, in the order they happened.
+
+    The other framing -- virtual rounds alone, from scratch -- answers "what if only my
+    practice counted", and on a long career that quietly discards a lot: once the from-scratch
+    rating climbs past a division's ceiling, every later Div. 2 round becomes ineligible and
+    contributes nothing. Merging answers "what if my practice had counted too", which is
+    usually the question people mean, and no round goes to waste.
+    """
+    virtual = virtual_participations(handles)
+    seen = {p["contest_id"] for p in virtual}
+    real = [p for p in real_participations(handles) if p["contest_id"] not in seen]
+    return sorted(virtual + real, key=lambda p: p["started"])
+
+
 def virtual_participations(handles) -> list[dict]:
     """Every contest these accounts have virtual-participated in, oldest attempt first.
 
@@ -146,7 +191,10 @@ def iter_career(handle, start_rating: int | None = None, participations=None,
             prep = future.result()
             if prep is None:
                 continue
-            points, penalty, results = contest_mod.score_submissions(prep, p["submissions"])
+            if p.get("points") is not None:      # a live round, already scored by the standings
+                points, penalty, results = p["points"], p["penalty"], {}
+            else:
+                points, penalty, results = contest_mod.score_submissions(prep, p["submissions"])
             rank = prep.rank_for(points, penalty)
 
             internal = rating + cf.internal_offset(completed, prep.start)
@@ -170,9 +218,11 @@ def iter_career(handle, start_rating: int | None = None, participations=None,
                 delta=int(round(new_rating - rating)),
                 confidence=prep.confidence(internal) if rated else "unrated",
                 rated=rated,
-                unsolved=[str(i) for i in prep.problem_index if not results[i].solved],
+                live=bool(p.get("live")),
+                unsolved=[str(i) for i in prep.problem_index
+                          if i in results and not results[i].solved],
                 attempted=[str(i) for i in prep.problem_index
-                           if not results[i].solved and results[i].rejects > 0],
+                           if i in results and not results[i].solved and results[i].rejects > 0],
             )
             if rated:
                 rating = new_rating
@@ -197,7 +247,10 @@ def _scored_rounds(participations, prepare):
         prep = prepare(p["contest_id"])
         if prep is None:
             continue
-        points, penalty, _ = contest_mod.score_submissions(prep, p["submissions"])
+        if p.get("points") is not None:
+            points, penalty = p["points"], p["penalty"]
+        else:
+            points, penalty, _ = contest_mod.score_submissions(prep, p["submissions"])
         out.append((p["contest_id"], prep, prep.rank_for(points, penalty)))
     return out
 

@@ -125,7 +125,7 @@ class Handler(BaseHTTPRequestHandler):
             handle = (query.get("handle") or [""])[0].strip()
             if not handle:
                 return self._send(400, {"error": "handle required"})
-            return self._stream(handle)
+            return self._stream(handle, merged=bool(query.get("merged")))
 
         if url.path == "/api/upsolve":
             handle = (query.get("handle") or [""])[0].strip()
@@ -146,6 +146,12 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 return self._send(200, {"error": str(exc)})
 
+        if url.path == "/api/ac/estimate":
+            handle = (query.get("handle") or [""])[0].strip()
+            if not handle:
+                return self._send(400, {"error": "handle required"})
+            return self._ac_estimate(handle)
+
         if url.path == "/api/ac/career":
             handle = (query.get("handle") or [""])[0].strip()
             ranks = (query.get("ranks") or [""])[0]
@@ -158,6 +164,29 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"error": str(exc)})
 
         return self._send(404, {"error": "not found"})
+
+    def _ac_estimate(self, handle):
+        """Rebuild each round's standings and slot the user's attempt in. Streams: a busy
+        ABC needs ~70 requests to reconstruct, so ranks arrive one contest at a time."""
+        self._sse_headers()
+        try:
+            sittings = atcoder.candidate_sittings(handle)
+            self._event("meta", {"handle": handle, "total": len(sittings)})
+
+            def progress(done, total, label):
+                self._event("progress", {"done": done, "total": total, "label": label})
+
+            with self._heartbeat():
+                ranks = atcoder.estimate_ranks(handle, sittings, progress=progress)
+            self._event("done", {"ranks": ranks})
+        except BrokenPipeError:
+            pass
+        except Exception as exc:
+            try:
+                self._event("failed", {"error": str(exc)})
+            except BrokenPipeError:
+                pass
+        self.close_connection = True
 
     def _blogs(self, refresh: bool = False):
         """The reading shelf. Streams: the first build fetches ~117 posts at 1 req/s."""
@@ -247,12 +276,18 @@ class Handler(BaseHTTPRequestHandler):
         real = payload.get("real") or []
         primary = payload.get("real_handle") or handles[0]
         parts = engine.group_virtual([(h, subs.get(h) or []) for h in handles])
+        if payload.get("merged"):
+            # the browser cannot score live rounds -- those come from standings, server side
+            seen = {p["contest_id"] for p in parts}
+            parts = sorted(parts + [p for p in engine.real_participations(handles)
+                                    if p["contest_id"] not in seen],
+                           key=lambda p: p["started"])
         if url.path == "/api/upsolve":
             return self._upsolve(handles, parts=parts, real=real, primary=primary,
                                  prefetched=payload.get("prefetched") or None)
         self._stream(handles, parts=parts, real=real, primary=primary)
 
-    def _stream(self, handle, parts=None, real=None, primary=None):
+    def _stream(self, handle, parts=None, real=None, primary=None, merged=False):
         self._sse_headers()
         entries: list[dict] = []
         if not _scans.acquire(timeout=120):
@@ -267,7 +302,8 @@ class Handler(BaseHTTPRequestHandler):
                 real = engine.real_curve(primary)
             if parts is None:
                 with self._heartbeat():
-                    parts = engine.virtual_participations(handles)
+                    parts = (engine.merged_participations(handles) if merged
+                             else engine.virtual_participations(handles))
             self._event("meta", {"handle": " + ".join(handles), "handles": handles,
                                  "real_handle": primary, "total": len(parts), "real": real})
             for entry in engine.iter_career(handles, participations=parts):

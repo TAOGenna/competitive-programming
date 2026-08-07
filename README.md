@@ -31,6 +31,11 @@ scores, and the round's own published rating changes. Type a handle and it finds
 participations itself. Give it several, comma separated, and the careers merge: alt accounts
 are one person, and a round sat twice counts once.
 
+Two framings, switchable: **virtual rounds only** — what your practice alone is worth, from
+scratch — or **alongside your real contests**, one interleaved timeline answering what you
+would be rated had practice counted too. The first can discard a lot on a long career: once
+the from-scratch rating passes a division ceiling, later Div. 2 rounds stop counting.
+
 Hover any round for its **alternate timeline**: where you would stand today had you skipped
 it. galen_colin [made this argument by hand](https://codeforces.com/blog/entry/79415) for a
 single −166 disaster, showing it had shrunk to a 25-point difference six rounds later. Running
@@ -98,9 +103,12 @@ performance essentially exactly. Two details break naive implementations, both s
 the data: APerf is a weighted average in `2^(perf/800)` space rather than linear, and the
 rating uses the *capped* `Performance` field, not `InnerPerformance`.
 
-Its one gap: `standings/json` needs a login, so the app finds the rounds you solved problems
-from *after* they finished — what a virtual sitting looks like from outside — and you type the
-rank.
+`standings/json` needs a login, so a virtual placing cannot be read directly. But every
+submission is public, so the standings are **rebuilt from the submission stream** and your
+attempt is slotted in. Checked against all 5,885 rated competitors of abc300, the rank that
+produces is not exact — but the number that matters is the performance it implies, and that
+lands **within 25 points 92% of the time** (median +2). Ranks are filled in for you and stay
+editable.
 
 ---
 
@@ -139,7 +147,9 @@ Environment: `VRATING_PORT`, `VRATING_DATA`, `VRATING_WORKERS` (threads, default
 
 ## Known gaps
 
-- AtCoder ranks are typed in; there is no public standings source to derive them from.
+- AtCoder ranks are reconstructed from public submissions, not read from official standings;
+  expect the implied performance within ~25 points rather than exactly. Rebuilding one round
+  costs ~70 requests the first time.
 - Contests before ~2015 used a different rating system and are not modelled.
 - Participants disqualified mid-contest (every submission `SKIPPED`) are not modelled. It
   cannot affect a virtual participant and never changes points or penalty.

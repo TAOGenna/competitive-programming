@@ -66,3 +66,42 @@ def test_contest_ids_from_the_query_string_cannot_escape_the_cache():
             src.safe_id(bad)
     for good in ("abc300", "wtf19", "agc065", "ahc001", "jsc2019-final"):
         assert src.safe_id(good) == good
+
+
+def test_a_round_you_competed_in_is_not_a_virtual_sitting(monkeypatch):
+    """Solving one more problem after a round you actually sat is upsolving. Treating that
+    as a virtual sitting invented rounds that never happened -- and scored them against a
+    field the user had already competed against for real."""
+    contest = {"id": "abc300", "title": "ABC 300",
+               "start_epoch_second": 1000, "duration_second": 100, "rate_change": "~ 1999"}
+    monkeypatch.setattr(src, "contests", lambda: [contest])
+    monkeypatch.setattr(src, "problems", lambda: [{"id": "abc300_a", "contest_id": "abc300"}])
+
+    live_then_upsolved = [{"problem_id": "abc300_a", "epoch_second": 1050},   # during
+                          {"problem_id": "abc300_a", "epoch_second": 9000}]   # long after
+    monkeypatch.setattr(src, "user_submissions", lambda u: live_then_upsolved)
+    assert acc.candidate_sittings("x") == []
+
+    monkeypatch.setattr(src, "user_submissions",
+                        lambda u: [{"problem_id": "abc300_a", "epoch_second": 9000}])
+    assert [s["contest_id"] for s in acc.candidate_sittings("x")] == ["abc300"]
+
+
+def test_atcoder_scoring_matches_the_published_rules():
+    """Points sum over solved problems; five penalty minutes per reject, and only on
+    problems that were eventually solved."""
+    subs = [
+        {"problem_id": "a", "epoch_second": 100, "result": "WA", "point": 0},
+        {"problem_id": "a", "epoch_second": 200, "result": "AC", "point": 100},
+        {"problem_id": "b", "epoch_second": 300, "result": "WA", "point": 0},   # never solved
+    ]
+    score, elapsed = src.score_attempt(subs, start=0)
+    assert score == 100
+    assert elapsed == 200 + src.PENALTY_SECONDS      # one reject on the solved problem only
+
+
+def test_place_for_uses_atcoder_ordering():
+    table = [(500, 600), (300, 400), (300, 900), (100, 100)]
+    assert src.place_for(table, 500, 100) == 1        # higher score wins outright
+    assert src.place_for(table, 300, 500) == 3        # same score, slower than one of them
+    assert src.place_for(table, 0, 10) == 5           # behind everyone
