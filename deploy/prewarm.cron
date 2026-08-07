@@ -1,0 +1,3 @@
+# New contests appear a few times a week and cost seconds to pick up.
+0 4 * * 1 vrating cd /srv/vrating && PYTHONPATH=/srv/vrating VRATING_DATA=/srv/vrating/data \
+  /usr/bin/python3 -m vrating.sources.prewarm >> /var/log/vrating-prewarm.log 2>&1

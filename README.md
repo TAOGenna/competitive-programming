@@ -17,16 +17,17 @@ there. Ones you attempted and failed are marked apart from ones you never opened
 problems that most people *at your level* solved and you did not. See below for the method.
 
 ```bash
+pip install -r requirements.txt      # numpy; the server itself is standard library
+python3 -m vrating.sources.prewarm   # fills the cache: ~35 min, ~16 GB down, ~600 MB kept
 python3 -m vrating.web.server        # http://127.0.0.1:8770
-python3 -m vrating.sources.archive   # optional, once: buys a 4x accuracy improvement
 ```
 
-Needs Python 3.10+ and numpy. Nothing else — the server is standard library.
+Needs Python 3.10+. It runs without the prewarm, just slowly — that step is install, not
+tuning. `GET /healthz` tells you where it stands:
 
-The archive pass walks every rated contest to work out how many contests each participant had
-sat at the time, which is the only way to recover the hidden internal ratings Codeforces
-calculates with. It takes about 40 minutes at the API's rate limit, is resumable, and is
-entirely optional — without it the app falls back to calibration alone and says so per row.
+```json
+{"ok": true, "standings_cached": 1743, "prior_index": 1780, "warm": true}
+```
 
 ## Why the numbers can be trusted
 
@@ -231,7 +232,19 @@ location / {
 }
 ```
 
-Run it under systemd (or anything that restarts on failure) — there is no supervisor built in.
+Ready-made files are in `deploy/`:
+
+| file | |
+|---|---|
+| `vrating.service` | systemd unit — restarts on failure, runs read-only except its cache |
+| `nginx.conf` | TLS proxy with `proxy_buffering off` (required for SSE) and a 32 MB body limit |
+| `prewarm.cron` | weekly refresh for newly finished contests |
+
+```bash
+sudo cp deploy/vrating.service /etc/systemd/system/
+sudo systemctl enable --now vrating
+curl -s localhost:8770/healthz
+```
 
 **Before exposing it**, note what it is: read-only, no accounts, no user data stored beyond
 the public contest cache. Contest ids arriving from the query string are allow-listed against

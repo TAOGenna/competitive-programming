@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 from dataclasses import asdict as _asdict
 
 from ..career import atcoder, engine, upsolve
+from ..sources import cf as src
 
 STATIC = Path(__file__).parent / "static"
 
@@ -64,6 +65,23 @@ class Handler(BaseHTTPRequestHandler):
         if url.path in ("/", "/index.html"):
             return self._send(200, (STATIC / "index.html").read_bytes(),
                               "text/html; charset=utf-8")
+
+        if url.path == "/healthz":
+            # Cache coverage is the one number that decides whether this feels fast.
+            data = src.DATA
+            cached = len(list((data / "st").glob("*.npz"))) if (data / "st").is_dir() else 0
+            rated = len(list((data / "rc").glob("*.npz"))) if (data / "rc").is_dir() else 0
+            indexed = len(list((data / "prior").glob("*.npy"))) if (data / "prior").is_dir() else 0
+            warm = cached >= 0.9 * max(indexed, 1)
+            return self._send(200, {
+                "ok": True,
+                "standings_cached": cached,
+                "contests_known": rated,
+                "prior_index": indexed,
+                "warm": bool(indexed and warm),
+                "hint": None if (indexed and warm)
+                        else "run: python3 -m vrating.sources.prewarm",
+            })
 
         if url.path == "/api/stream":
             handle = (query.get("handle") or [""])[0].strip()
