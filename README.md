@@ -169,108 +169,18 @@ without it the list is unusable.
 
 Tags are aggregated too, because a tag you keep missing says more than any single problem.
 
-## Running it for other people
+## Configuration
 
-Nothing here needs a database, a queue, or a container. Python 3.10+, numpy, one process.
-
-**Warm the cache first — this is the whole game.**
-
-```bash
-python3 -m vrating.sources.prewarm     # ~35 min, ~16 GB down, ~600 MB kept
-```
-
-| | measured |
+| variable | |
 |---|---|
-| time | **~35 min** (4 workers; ~2 h single-threaded) |
-| downloaded | **~16 GB** — a standings response is ~9.5 MB |
-| kept on disk | **~600 MB** — 360 MB standings, 181 MB rating archive, 24 MB index, 31 MB AtCoder |
+| `VRATING_PORT` | default 8770; the launcher takes the next free port if it is busy |
+| `VRATING_DATA` | where the cache lives, default `./data` |
+| `VRATING_WORKERS` | threads for contest preparation, default 4 — 1 works, just slower |
+| `VRATING_CACHED_CONTESTS` | in-memory prepared contests, default 256 (~200 MB) |
 
-A serial run is bound by transfer time, not the rate limit: 9.5 MB takes ~3.7 s to pull while
-requests may only be *issued* one second apart. Four workers overlap the transfers without
-sending requests any faster — 16 contests/min becomes 51.
-
-**Do not prewarm on the server.** Warm it locally and copy the cache up; the box then never
-downloads those 16 GB and never waits:
-
-```bash
-python3 -m vrating.sources.prewarm            # once, on your machine
-rsync -az data/ you@server:/srv/vrating/data/ # ~600 MB
-```
-
-New contests appear a few times a week and cost seconds to pick up, so a weekly cron is
-enough to stay current:
-
-```
-0 4 * * 1  cd /srv/vrating && python3 -m vrating.sources.prewarm >> /var/log/vrating-prewarm.log
-```
-
-Codeforces allows roughly **one request per second per IP, not per user**. On a cold cache a
-single visitor's replay spends 77 s making API calls, and a second visitor queues behind the
-first. With standings cached, a request makes only 2-3 calls — that visitor's own submissions
-and rating history — and everything else is read from disk:
-
-| | cold cache | warmed |
-|---|---|---|
-| a 46-round replay | 77 s | **3.7 s** (2.1 s of it those 2-3 calls) |
-| API calls per visitor | ~50 | **2–3** |
-| 100 visitors/hour | far over the limit | ~300 calls/h = **0.08 req/s** |
-
-That is roughly 12× headroom against the limit, and it only improves — the cache is shared, so
-every visitor warms it for the next.
-
-**What it needs**
-
-| | |
-|---|---|
-| Disk | **~600 MB** warmed (360 MB standings, 181 MB archive, 24 MB index, 31 MB AtCoder) |
-| Memory | 33 MB idle, ~200 MB steady with the default contest cache |
-| CPU | negligible; the rating maths is ~30 ms per contest, then cached |
-
-```bash
-VRATING_HOST=0.0.0.0 VRATING_PORT=8770 python3 -m vrating.web.server
-```
-
-Environment: `VRATING_HOST`, `VRATING_PORT`, `VRATING_DATA` (cache location),
-`VRATING_MAX_SCANS` (concurrent replays, default 4), `VRATING_CACHED_CONTESTS` (memory/speed
-trade, default 256).
-
-**Behind nginx, turn buffering off.** Results stream over Server-Sent Events, and nginx
-buffers proxied responses by default — which makes the page sit blank until the whole reply
-lands, defeating the streaming entirely:
-
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:8770;
-    proxy_buffering off;          # required: this is an SSE endpoint
-    proxy_read_timeout 900s;      # a cold upsolve scan is long
-}
-```
-
-Ready-made files are in `deploy/` — see `deploy/README.md`:
-
-| file | |
-|---|---|
-| `vrating.service` | systemd unit — restarts on failure, runs read-only except its cache |
-| `cloudflared.yml` | Cloudflare Tunnel: your domain and TLS, no public IP, no nginx |
-| `nginx.conf` | plain TLS proxy instead, with `proxy_buffering off` (required for SSE) |
-| `prewarm.cron` | weekly refresh for newly finished contests |
-
-Whatever sits in front, it must not buffer: results are Server-Sent Events, and a buffering
-proxy holds the whole reply until it finishes, making a working page look frozen. Cloudflare
-additionally 524s an origin that is silent for 100 s, so the server sends a keepalive every
-20 s during phases that do silent work.
-
-```bash
-sudo cp deploy/vrating.service /etc/systemd/system/
-sudo systemctl enable --now vrating
-curl -s localhost:8770/healthz
-```
-
-**Before exposing it**, note what it is: read-only, no accounts, no user data stored beyond
-the public contest cache. Contest ids arriving from the query string are allow-listed against
-`[A-Za-z0-9_-]{1,64}` because they become both a filename and an outbound URL path; without
-that, `../../..` escapes the cache directory. There is a test for it. Concurrent replays are
-capped by semaphore so one visitor cannot monopolise the API budget.
+Warming the whole archive is possible (`make warm` with no handle) but only worth it if you
+are serving other people: ~1780 contests, ~35 min, ~16 GB down, ~600 MB kept. For yourself,
+`make warm H=your_handle` fetches the couple of hundred rounds you have actually sat.
 
 ## Known gaps
 
