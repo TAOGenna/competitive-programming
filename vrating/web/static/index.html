@@ -213,6 +213,9 @@ tbody tr{animation:in .28s ease both}
 .meter{position:relative;height:7px;background:var(--rule-soft);border-radius:1px}
 .meter i{position:absolute;inset:0 auto 0 0;background:var(--ink);border-radius:1px}
 #msg{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:16px 0;min-height:20px}
+.alt{margin-top:26px;padding:13px 16px;border-left:3px solid var(--ink);background:var(--panel);
+     font-size:13px;line-height:1.6;max-width:78ch}
+.alt b{font-weight:600}
 .foot{margin-top:22px;font-size:12px;line-height:1.65;color:var(--muted);max-width:70ch}
 .foot b{color:var(--ink-2);font-weight:600}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -279,6 +282,8 @@ tbody tr{animation:in .28s ease both}
       <div id="tip" hidden></div>
     </div>
 
+    <p class="alt" id="alt" hidden></p>
+
     <table>
       <thead><tr>
         <th class="l">Round</th><th>Rank</th><th>Perf</th><th>Before</th><th>Δ</th><th>After</th><th>±</th>
@@ -314,6 +319,7 @@ const NS="http://www.w3.org/2000/svg";
 const $=id=>document.getElementById(id);
 
 let entries=[], real=[], expected=0, manyAccounts=false, lastUsers=null;
+let alternates={}, actualFinal=null;
 
 function el(tag,attrs,parent){
   const e=document.createElementNS(NS,tag);
@@ -349,6 +355,11 @@ function showTip(ev,e,ghostRating){
     `<a class="name" href="${contestUrl(e)}" target="_blank" rel="noopener">${e.name}</a>`+
     `<div class="meta">Rank <span>${e.rank}</span> of <span>${e.field_size}</span> · `+
     `performance <span>${e.performance}</span></div>`+
+    (()=>{const alt=alternates[e.contest_id];
+      if(alt==null||actualFinal==null)return "";
+      const d=alt-actualFinal;
+      return `<div class="meta">Skip this round and you would sit at <span>${alt}</span> today `+
+             `(<span>${d>=0?"+":""}${d}</span>)</div>`;})()+
     `<div class="meta">${when}${manyAccounts?" · sat on "+e.handle:""}`+
     (ghostRating==null?"":` · real rating then <span>${ghostRating}</span>`)+`</div>`+
     // only URL shapes verified against Codeforces' own documented forms
@@ -595,6 +606,9 @@ async function run(handle){
         $("msg").textContent=`Replaying ${entries.length} of ${expected}…`;
       } else if(name==="failed"){
         throw new Error(d.error);
+      } else if(name==="alternates"){
+        alternates=d.alternates||{};actualFinal=d.actual_final??null;
+        showAlternates();
       } else if(name==="done"){
         stats(d);draw();
         const skipped=expected-entries.length, unrated=entries.length-d.contests;
@@ -612,6 +626,22 @@ async function run(handle){
     });
   }catch(err){ $("msg").textContent="Error: "+err.message; }
   finally{ $("go").disabled=false; }
+}
+
+/** "What if I'd skipped that round?" — the counterfactual for every round at once. */
+function showAlternates(){
+  if(actualFinal==null)return;
+  const costs=Object.entries(alternates)
+    .map(([cid,fin])=>({cid,gain:fin-actualFinal}))
+    .filter(x=>Number.isFinite(x.gain)).sort((a,b)=>b.gain-a.gain);
+  if(!costs.length)return;
+  const worst=costs[0];
+  const name=(entries.find(e=>String(e.contest_id)===worst.cid)||{}).name||worst.cid;
+  $("alt").innerHTML=`Your worst round was <b>${name}</b>. Skipping it entirely would leave you `+
+    `<b>${worst.gain>0?"+":""}${Math.round(worst.gain)}</b> today — after enough rounds even a `+
+    `disaster washes out. <a href="https://codeforces.com/blog/entry/79415" target="_blank" `+
+    `rel="noopener">galen_colin argued this</a> from one contest by hand; hover any round for its own number.`;
+  $("alt").hidden=false;
 }
 
 // ---------- reading shelf ----------

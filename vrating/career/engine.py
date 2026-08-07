@@ -185,6 +185,61 @@ def build_career(handle: str, **kw) -> list[Entry]:
     return list(iter_career(handle, **kw))
 
 
+def _scored_rounds(participations, prepare):
+    """(prepared contest, rank) per round, computed once.
+
+    Scoring re-parses a round's submissions, which is far too expensive to repeat inside the
+    counterfactual loop: one chain pass over 134 rounds costs 1.2 s, so redoing it per round
+    would be 155 s of blocking work. The rank never depends on the rating, so it is fixed.
+    """
+    out = []
+    for p in participations:
+        prep = prepare(p["contest_id"])
+        if prep is None:
+            continue
+        points, penalty, _ = contest_mod.score_submissions(prep, p["submissions"])
+        out.append((p["contest_id"], prep, prep.rank_for(points, penalty)))
+    return out
+
+
+def _final_rating(scored, start_rating, skip_index=None) -> float:
+    """The rating a chain of pre-scored rounds ends on. Arithmetic only."""
+    rating = float(start_rating)
+    completed = 0
+    for i, (_, prep, rank) in enumerate(scored):
+        if i == skip_index:
+            continue
+        internal = rating + cf.internal_offset(completed, prep.start)
+        if not prep.is_rated_for(internal):
+            continue
+        rating += prep.delta_for(internal, rank) + cf.promotion(completed, prep.start)
+        completed += 1
+    return rating
+
+
+def alternate_timelines(participations, prepare=contest_mod.prepare, start_rating=None):
+    """Where you would stand today had you skipped each round in turn.
+
+    galen_colin worked this out by hand for a single contest and made the point that carries
+    the whole idea (codeforces.com/blog/entry/79415): a -166 disaster had shrunk to a 25 point
+    difference six rounds later. A chained career can answer it for every round at once, which
+    is the honest reply to "that one contest ruined my rating".
+
+    Returns {contest_id: final rating without that round}, plus the real final rating.
+    """
+    if not participations:
+        return {}, 0.0
+    if start_rating is None:
+        first = participations[0]["started"]
+        start_rating = START_RATING if cf.uses_new_account_rule(first) else cf.LEGACY_START_RATING
+
+    scored = _scored_rounds(participations, prepare)
+    actual = _final_rating(scored, start_rating)
+    out = {cid: _final_rating(scored, start_rating, skip_index=i)
+           for i, (cid, _, _) in enumerate(scored)}
+    return out, actual
+
+
 def summarize(handles, entries: list[dict], real: list[dict], real_handle="") -> dict:
     rated = [e for e in entries if e["rated"]]
     virtual = rated[-1]["new_rating"] if rated else START_RATING

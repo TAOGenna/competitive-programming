@@ -273,7 +273,13 @@ class Handler(BaseHTTPRequestHandler):
             for entry in engine.iter_career(handles, participations=parts):
                 entries.append(asdict(entry))
                 self._event("entry", asdict(entry))
+            # Report the career first. The counterfactuals take a second or two on a long
+            # history, and holding `done` back for them leaves the page looking stalled at
+            # the very last round.
             self._event("done", engine.summarize(handles, entries, real, primary))
+            alts, actual = engine.alternate_timelines(parts)
+            self._event("alternates", {"alternates": {str(k): round(v) for k, v in alts.items()},
+                                       "actual_final": round(actual)})
         except BrokenPipeError:
             pass
         except Exception as exc:

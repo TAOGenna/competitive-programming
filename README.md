@@ -17,7 +17,8 @@ opens the page.
 ![The virtual rating career, drawn against the real one](docs/img/career.png)
 
 Solid line: the career your virtual rounds would have given you. Dashed: your real rating on
-the day you sat each one. The gap between them is the point.
+the day you sat each one. The gap between them is the point — above, `galen_colin` sits **258
+points higher** in the timeline where his practice counted, peaking at 3076.
 
 ---
 
@@ -29,6 +30,12 @@ Every round is scored against the actual field — every rated participant's rat
 scores, and the round's own published rating changes. Type a handle and it finds your virtual
 participations itself. Give it several, comma separated, and the careers merge: alt accounts
 are one person, and a round sat twice counts once.
+
+Hover any round for its **alternate timeline**: where you would stand today had you skipped
+it. galen_colin [made this argument by hand](https://codeforces.com/blog/entry/79415) for a
+single −166 disaster, showing it had shrunk to a 25-point difference six rounds later. Running
+it for every round at once is the honest answer to *"that one contest ruined my rating"* —
+across his own 65 rated rounds, the costliest was worth **15 points**.
 
 ### Tells you what to upsolve
 

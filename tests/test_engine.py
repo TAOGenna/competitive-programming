@@ -141,3 +141,41 @@ def test_rounds_are_prepared_in_parallel_without_losing_streaming(monkeypatch):
 
     assert first < 0.5, f"first entry took {first:.2f}s; streaming regressed to batch"
     assert total < 1.2, f"all 8 took {total:.2f}s; expected well under the 1.6s serial cost"
+
+
+def test_alternate_timelines_recomputes_the_chain_without_each_round():
+    """galen_colin's argument, made mechanical: what would you be rated had you skipped a
+    round? The chain has to be rerun, not just the delta subtracted, because every later
+    round was scored against a rating that would have been different."""
+    a, b, c = StubContest(delta=100), StubContest(delta=-30), StubContest(delta=10)
+    parts = [{"contest_id": i, "started": MODERN + i, "submissions": []} for i in range(3)]
+    lookup = {0: a, 1: b, 2: c}
+
+    alts, actual = engine.alternate_timelines(parts, prepare=lookup.get)
+    assert actual == 1180                       # 0 +100+500, -30+350, +10+250
+    assert set(alts) == {0, 1, 2}
+
+    # dropping the middle round also shifts which promotion the last one receives,
+    # so the answer is not simply actual + 30
+    assert alts[1] != actual + 30
+    assert alts[1] == 960                       # 0 +100+500 = 600, then +10+350
+
+
+def test_alternate_timelines_is_empty_for_no_rounds():
+    assert engine.alternate_timelines([], prepare=lambda c: None) == ({}, 0.0)
+
+
+def test_alternate_timelines_scores_each_round_once(monkeypatch):
+    """The counterfactual loop is O(rounds^2) chain passes, so anything expensive inside it
+    must be hoisted. Scoring re-parses submissions; leaving it in the loop cost 155 s on a
+    134-round career instead of 1.8 s. Asserted by counting calls, not by timing."""
+    calls = []
+    real = engine.contest_mod.score_submissions
+    monkeypatch.setattr(engine.contest_mod, "score_submissions",
+                        lambda prep, subs: (calls.append(1), real(prep, subs))[1])
+
+    stubs = [StubContest(delta=10) for _ in range(6)]
+    parts = [{"contest_id": i, "started": MODERN + i, "submissions": []} for i in range(6)]
+    engine.alternate_timelines(parts, prepare=dict(enumerate(stubs)).get)
+
+    assert len(calls) == 6, f"scored {len(calls)} times for 6 rounds; should be once each"
