@@ -1,0 +1,196 @@
+"""Chain virtual contests into a rating career.
+
+The defining rule: contest n is scored against the rating you held after contest n-1 in the
+*virtual* timeline, not your real rating. That is what makes this a parallel career rather
+than a series of independent what-ifs.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+
+from ..rating import cf
+from ..sources import cf as src
+from . import contest as contest_mod
+
+START_RATING = 0          # displayed rating of a fresh account under the modern rule
+
+
+@dataclass
+class Entry:
+    contest_id: int
+    name: str
+    handle: str
+    start: int
+    rank: int
+    field_size: int
+    points: float
+    penalty: float
+    performance: int
+    old_rating: int
+    new_rating: int
+    delta: int
+    confidence: str
+    rated: bool
+    unsolved: list      # problem indexes left unsolved -- the upsolving list
+    attempted: list     # of those, the ones you did submit to
+
+
+def parse_handles(text: str) -> list[str]:
+    """Split a handle list on commas or whitespace, preserving order, dropping repeats."""
+    seen, out = set(), []
+    for part in text.replace(",", " ").split():
+        if part.lower() not in seen:
+            seen.add(part.lower())
+            out.append(part)
+    return out
+
+
+def main_handle(handles: list[str]) -> str:
+    """Whichever account has competed most -- its real rating is the meaningful comparison."""
+    best, best_n = handles[0], -1
+    for h in handles:
+        try:
+            n = len(src.user_rating(h))
+        except Exception:
+            n = 0
+        if n > best_n:
+            best, best_n = h, n
+    return best
+
+
+def real_curve(handle: str) -> list[dict]:
+    """The handle's actual rating history, for comparison against the virtual one."""
+    try:
+        return [{"t": h["ratingUpdateTimeSeconds"], "rating": h["newRating"]}
+                for h in src.user_rating(handle)]
+    except Exception:
+        return []
+
+
+def group_virtual(subs_by_handle) -> list[dict]:
+    """Group already-fetched submissions into sittings. See virtual_participations.
+
+    Split out so the browser can do the fetching: user.status and user.rating are per-user
+    endpoints that Codeforces serves with CORS, so a visitor can pull their own data against
+    their own rate-limit budget, in parallel, instead of queueing behind everyone else.
+    """
+    by_contest: dict[int, dict] = {}
+    for handle, subs in subs_by_handle:
+        for s in subs:
+            party = s["author"]
+            if party.get("participantType") != "VIRTUAL":
+                continue
+            cid = s.get("contestId")
+            started = party.get("startTimeSeconds", 0)
+            cur = by_contest.get(cid)
+            if cur is None or started < cur["started"]:
+                by_contest[cid] = {"contest_id": cid, "started": started,
+                                   "handle": handle, "submissions": []}
+        for s in subs:
+            party = s["author"]
+            cid = s.get("contestId")
+            cur = by_contest.get(cid)
+            if (party.get("participantType") == "VIRTUAL" and cur is not None
+                    and cur["handle"] == handle
+                    and party.get("startTimeSeconds", 0) == cur["started"]):
+                cur["submissions"].append(s)
+    return sorted(by_contest.values(), key=lambda v: v["started"])
+
+
+def virtual_participations(handles) -> list[dict]:
+    """Every contest these accounts have virtual-participated in, oldest attempt first.
+
+    Accepts one handle or several: people keep alt accounts, and the career they care about
+    is the union. A contest sat on two accounts is kept once, at its earliest attempt --
+    a rating career cannot count the same round twice, however many logins it took.
+
+    The virtual start time -- not the contest's date -- sets the order, since that is when
+    the round was actually sat.
+    """
+    if isinstance(handles, str):
+        handles = [handles]
+    return group_virtual([(h, src.user_submissions(h)) for h in handles])
+
+
+def iter_career(handle, start_rating: int | None = None, participations=None,
+                prepare=contest_mod.prepare):
+    """Yield each virtual contest's outcome as it is computed.
+
+    Streaming matters: on a cold cache each contest costs a couple of seconds of
+    rate-limited API calls, and the page draws results as they land.
+    """
+    if participations is None:
+        participations = virtual_participations(handle)
+
+    if start_rating is None:
+        # An account opened before round 1360 simply started at 1500.
+        first = participations[0]["started"] if participations else 1 << 31
+        start_rating = START_RATING if cf.uses_new_account_rule(first) else cf.LEGACY_START_RATING
+
+    rating = float(start_rating)
+    completed = 0
+
+    for p in participations:
+        prep = prepare(p["contest_id"])
+        if prep is None:
+            continue
+        points, penalty, results = contest_mod.score_submissions(prep, p["submissions"])
+        rank = prep.rank_for(points, penalty)
+
+        internal = rating + cf.internal_offset(completed, prep.start)
+        rated = prep.is_rated_for(internal)
+        delta = prep.delta_for(internal, rank) if rated else 0
+        promotion = cf.promotion(completed, prep.start) if rated else 0
+        new_rating = rating + delta + promotion
+
+        yield Entry(
+            contest_id=p["contest_id"],
+            name=prep.name,
+            handle=p.get("handle", handle if isinstance(handle, str) else ""),
+            start=p["started"],
+            rank=rank,
+            field_size=prep.field.size_rated or prep.field.size,
+            points=points,
+            penalty=penalty,
+            performance=prep.performance(rank),
+            old_rating=int(round(rating)),
+            new_rating=int(round(new_rating)),
+            delta=int(round(new_rating - rating)),
+            confidence=prep.confidence(internal) if rated else "unrated",
+            rated=rated,
+            unsolved=[str(i) for i in prep.problem_index if not results[i].solved],
+            attempted=[str(i) for i in prep.problem_index
+                       if not results[i].solved and results[i].rejects > 0],
+        )
+        if rated:
+            rating = new_rating
+            completed += 1
+
+
+def build_career(handle: str, **kw) -> list[Entry]:
+    return list(iter_career(handle, **kw))
+
+
+def summarize(handles, entries: list[dict], real: list[dict], real_handle="") -> dict:
+    rated = [e for e in entries if e["rated"]]
+    virtual = rated[-1]["new_rating"] if rated else START_RATING
+    if isinstance(handles, str):
+        handles = [handles]
+    return {
+        "handle": " + ".join(handles),
+        "handles": handles,
+        "real_handle": real_handle or (handles[0] if handles else ""),
+        "rating": virtual,
+        "peak": max((e["new_rating"] for e in rated), default=START_RATING),
+        "contests": len(rated),
+        "real_rating": real[-1]["rating"] if real else None,
+        "divergence": (virtual - real[-1]["rating"]) if real and rated else None,
+    }
+
+
+def career_json(handle, **kw) -> dict:
+    handles = parse_handles(handle) if isinstance(handle, str) else list(handle)
+    entries = [asdict(e) for e in build_career(handles, **kw)]
+    primary = main_handle(handles)
+    real = real_curve(primary)
+    return {**summarize(handles, entries, real, primary), "entries": entries, "real": real}
