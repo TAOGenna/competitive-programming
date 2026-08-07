@@ -39,14 +39,28 @@ Use `deploy/nginx.conf` instead of the tunnel. It carries the same requirement i
 terms: `proxy_buffering off`, without which nginx holds the entire reply until it finishes and
 a working page looks frozen.
 
-## Why not Cloudflare Workers
+## Why not Workers, and why not Containers either
 
-Workers have no persistent filesystem, and the 600 MB contest cache is the thing that makes
-this fast; it would have to move to R2, one object per contest. The 128 MB isolate limit is
-below the ~200 MB the server settles at. And the rating maths — an FFT convolution and a
-vectorized binary search over 20,000-participant fields — is numpy, so it would need porting
-to JS or WASM. That is a rewrite of the most carefully validated code in the project to fit a
-runtime that does not want it. Tunnel keeps the Python and still gives you the Cloudflare edge.
+**Workers** have no persistent filesystem, a 128 MB isolate limit against the ~200 MB this
+settles at, and no numpy — the FFT convolution and the vectorized binary search over
+20,000-participant fields would need porting to JS or WASM. That is a rewrite of the most
+carefully validated code here to fit a runtime that does not want it.
+
+**Containers** would genuinely run this: arbitrary Docker images at up to 4 vCPU / 12 GiB /
+20 GB disk, so the app and numpy work unchanged. Two things still make it the wrong shape:
+
+- **Container disk is ephemeral.** Cloudflare's own docs say so plainly, and instances sleep
+  after an idle timeout. The 600 MB cache is the entire performance design; losing it means
+  re-pulling ~16 GB at one request per second, which takes hours. Surviving that needs the
+  cache baked into the image (600 MB image, rebuilt and redeployed to refresh) or moved to R2
+  with the storage layer rewritten to read objects instead of files.
+- **No free tier, and it is billed for wall-clock time awake.** Containers need the $5/month
+  Workers Paid plan; at ~100 visitors an hour the instance is effectively never idle, so
+  memory and vCPU land somewhere around $10-15/month all in. A small VPS running the tunnel
+  is cheaper and keeps a real disk.
+
+Containers are the right answer if you ever want this to scale out or stop owning a box. For
+one instance serving a hundred people an hour, a persistent disk is worth more than elasticity.
 
 ## Checking it worked
 
