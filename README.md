@@ -96,6 +96,12 @@ vrating/
   **0.27 s**. The page POSTs the filtered result (~250 KB) and streams the reply back.
 - Cold cache is network-bound at the API's ~1 req/s. Results stream as they land instead of
   blocking.
+- **Contest preparation runs in parallel, the chain stays sequential.** Round *n* needs the
+  rating round *n-1* left you on, so the chaining cannot be parallelised — but preparing each
+  round's field is independent, and numpy releases the GIL for the FFT and the vectorized
+  search. Measured 2.6x on four threads, 3.9x end to end. Results still stream in order: the
+  pool outlives the loop, because exiting a `with ThreadPoolExecutor(...)` waits for every
+  future and would turn the stream back into a batch. There is a test for that.
 - The prior-contest index is precomputed per contest, so preparation stays ~30 ms.
 - **Failed standings fetches are tombstoned.** Gym rounds have no rated field and the API
   refuses their standings; without remembering that, every upsolve scan re-attempted ~22

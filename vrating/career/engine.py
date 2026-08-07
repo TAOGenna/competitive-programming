@@ -6,6 +6,8 @@ than a series of independent what-ifs.
 """
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, asdict
 
 from ..rating import cf
@@ -13,6 +15,10 @@ from ..sources import cf as src
 from . import contest as contest_mod
 
 START_RATING = 0          # displayed rating of a fresh account under the modern rule
+
+# Preparing a contest is independent of every other contest; only the chaining is sequential.
+# numpy drops the GIL for the FFT and the vectorized search, so threads genuinely help here.
+WORKERS = int(os.environ.get("VRATING_WORKERS", "4"))
 
 
 @dataclass
@@ -130,41 +136,49 @@ def iter_career(handle, start_rating: int | None = None, participations=None,
     rating = float(start_rating)
     completed = 0
 
-    for p in participations:
-        prep = prepare(p["contest_id"])
-        if prep is None:
-            continue
-        points, penalty, results = contest_mod.score_submissions(prep, p["submissions"])
-        rank = prep.rank_for(points, penalty)
+    # Fan the preparation out and consume in order, so the first round still streams the
+    # moment it is ready while later rounds are already being computed. The pool must outlive
+    # the loop: exiting a `with` block waits for every future, which would defeat streaming.
+    pool = ThreadPoolExecutor(max_workers=WORKERS)
+    try:
+        prepared = [pool.submit(prepare, p["contest_id"]) for p in participations]
+        for p, future in zip(participations, prepared):
+            prep = future.result()
+            if prep is None:
+                continue
+            points, penalty, results = contest_mod.score_submissions(prep, p["submissions"])
+            rank = prep.rank_for(points, penalty)
 
-        internal = rating + cf.internal_offset(completed, prep.start)
-        rated = prep.is_rated_for(internal)
-        delta = prep.delta_for(internal, rank) if rated else 0
-        promotion = cf.promotion(completed, prep.start) if rated else 0
-        new_rating = rating + delta + promotion
+            internal = rating + cf.internal_offset(completed, prep.start)
+            rated = prep.is_rated_for(internal)
+            delta = prep.delta_for(internal, rank) if rated else 0
+            promotion = cf.promotion(completed, prep.start) if rated else 0
+            new_rating = rating + delta + promotion
 
-        yield Entry(
-            contest_id=p["contest_id"],
-            name=prep.name,
-            handle=p.get("handle", handle if isinstance(handle, str) else ""),
-            start=p["started"],
-            rank=rank,
-            field_size=prep.field.size_rated or prep.field.size,
-            points=points,
-            penalty=penalty,
-            performance=prep.performance(rank),
-            old_rating=int(round(rating)),
-            new_rating=int(round(new_rating)),
-            delta=int(round(new_rating - rating)),
-            confidence=prep.confidence(internal) if rated else "unrated",
-            rated=rated,
-            unsolved=[str(i) for i in prep.problem_index if not results[i].solved],
-            attempted=[str(i) for i in prep.problem_index
-                       if not results[i].solved and results[i].rejects > 0],
-        )
-        if rated:
-            rating = new_rating
-            completed += 1
+            yield Entry(
+                contest_id=p["contest_id"],
+                name=prep.name,
+                handle=p.get("handle", handle if isinstance(handle, str) else ""),
+                start=p["started"],
+                rank=rank,
+                field_size=prep.field.size_rated or prep.field.size,
+                points=points,
+                penalty=penalty,
+                performance=prep.performance(rank),
+                old_rating=int(round(rating)),
+                new_rating=int(round(new_rating)),
+                delta=int(round(new_rating - rating)),
+                confidence=prep.confidence(internal) if rated else "unrated",
+                rated=rated,
+                unsolved=[str(i) for i in prep.problem_index if not results[i].solved],
+                attempted=[str(i) for i in prep.problem_index
+                           if not results[i].solved and results[i].rejects > 0],
+            )
+            if rated:
+                rating = new_rating
+                completed += 1
+    finally:
+        pool.shutdown(wait=False)
 
 
 def build_career(handle: str, **kw) -> list[Entry]:

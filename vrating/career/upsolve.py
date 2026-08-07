@@ -33,6 +33,8 @@ learning" are different questions and merging them into one score answers neithe
 from __future__ import annotations
 
 import functools
+import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
@@ -40,6 +42,7 @@ import numpy as np
 from ..rating import cf
 from ..sources import archive, cf as src
 
+WORKERS = int(os.environ.get("VRATING_WORKERS", "4"))
 BIN = 100.0          # rating bin width
 MIN_PER_BIN = 25     # below this a bin is merged into its neighbour
 DEFAULT_FLOOR = 0.5  # only surface problems the majority of your peers solved
@@ -153,45 +156,55 @@ def suggest(rating_now: float, participations, floor: float = DEFAULT_FLOOR,
     """
     meta = _problem_meta()
     out: list[Suggestion] = []
-    for n, p in enumerate(participations):
-        if progress:
-            progress(n, len(participations), str(p["contest_id"]))
-        if not p["unsolved"]:
-            continue
-        try:
-            curves = solve_curves(p["contest_id"])
-        except src.CodeforcesError:
-            continue
-        if curves is None:
-            continue
-        centres, monotone, counts = curves
-        st = src.standings(p["contest_id"])
-        changes = src.rating_changes(p["contest_id"])
-        rating_then = float(p.get("rating_then") or rating_now)
-        near = int(counts[int(np.argmin(np.abs(centres - rating_then)))])
 
-        for index in p["unsolved"]:
-            if index not in st["problem_index"]:
+    # Each round's solve curves are independent; fit them all at once, then walk in order.
+    def curves_for(p):
+        try:
+            return solve_curves(p["contest_id"])
+        except src.CodeforcesError:
+            return None
+    pool = ThreadPoolExecutor(max_workers=WORKERS)
+    try:
+        fitted = [pool.submit(curves_for, p) for p in participations]
+        for n, p in enumerate(participations):
+            if progress:
+                progress(n, len(participations), str(p["contest_id"]))
+            if not p["unsolved"]:
                 continue
-            key = (p["contest_id"], index)
-            if key in already_solved:
+            curves = fitted[n].result()
+            if curves is None:
                 continue
-            j = list(st["problem_index"]).index(index)
-            rate = float(np.interp(rating_then, centres, monotone[:, j]))
-            if rate < floor:
-                continue
-            info = meta.get(key, {})
-            out.append(Suggestion(
-                contest_id=p["contest_id"], index=index,
-                name=info.get("name", index),
-                contest_name=changes["name"] if changes else str(p["contest_id"]),
-                when=st["start"],
-                solve_rate=rate, peers=near,
-                rating_then=int(round(rating_then)),
-                difficulty=info.get("rating"),
-                tags=info.get("tags", []),
-                attempted=index in p.get("attempted", []),
-            ))
+            centres, monotone, counts = curves
+            st = src.standings(p["contest_id"])
+            changes = src.rating_changes(p["contest_id"])
+            rating_then = float(p.get("rating_then") or rating_now)
+            near = int(counts[int(np.argmin(np.abs(centres - rating_then)))])
+
+            for index in p["unsolved"]:
+                if index not in st["problem_index"]:
+                    continue
+                key = (p["contest_id"], index)
+                if key in already_solved:
+                    continue
+                j = list(st["problem_index"]).index(index)
+                rate = float(np.interp(rating_then, centres, monotone[:, j]))
+                if rate < floor:
+                    continue
+                info = meta.get(key, {})
+                out.append(Suggestion(
+                    contest_id=p["contest_id"], index=index,
+                    name=info.get("name", index),
+                    contest_name=changes["name"] if changes else str(p["contest_id"]),
+                    when=st["start"],
+                    solve_rate=rate, peers=near,
+                    rating_then=int(round(rating_then)),
+                    difficulty=info.get("rating"),
+                    tags=info.get("tags", []),
+                    attempted=index in p.get("attempted", []),
+                ))
+    finally:
+        pool.shutdown(wait=False)
+
     out.sort(key=lambda s: (-s.solve_rate, -(s.difficulty or 0)))
     return out
 

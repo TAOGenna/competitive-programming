@@ -119,3 +119,25 @@ def test_summary_names_every_account():
     assert s["handles"] == ["alt", "main"]
     assert s["handle"] == "alt + main"
     assert s["real_handle"] == "main"
+
+
+def test_rounds_are_prepared_in_parallel_without_losing_streaming(monkeypatch):
+    """Preparation fans out, but the first result must still arrive as early as it would
+    have sequentially -- an earlier attempt used `with ThreadPoolExecutor(...)`, whose exit
+    waits for every future and silently turned the stream into a batch."""
+    import time
+
+    def slow_prepare(cid):
+        time.sleep(0.2)
+        return StubContest()
+
+    parts = [{"contest_id": i, "started": MODERN + i, "submissions": []} for i in range(8)]
+    started = time.monotonic()
+    gen = engine.iter_career("x", participations=parts, prepare=slow_prepare)
+    next(gen)
+    first = time.monotonic() - started
+    list(gen)
+    total = time.monotonic() - started
+
+    assert first < 0.5, f"first entry took {first:.2f}s; streaming regressed to batch"
+    assert total < 1.2, f"all 8 took {total:.2f}s; expected well under the 1.6s serial cost"
