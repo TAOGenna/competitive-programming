@@ -25,6 +25,7 @@ UNRATED = "unrated"
 class Entry:
     contest_id: str
     name: str
+    handle: str          # the account that sat it; several are replayed as one career
     start: int
     rank: int
     field_size: int
@@ -43,7 +44,8 @@ def _contest_index():
 def _unresolved(cid, sitting, rating, why):
     """A round we could not place. Reported, never dropped -- see iter_career."""
     return Entry(
-        contest_id=cid, name=cid, start=int(sitting.get("sat_at", 0)),
+        contest_id=cid, name=cid, handle=sitting.get("handle", ""),
+        start=int(sitting.get("sat_at", 0)),
         rank=int(sitting.get("rank", 0)), field_size=0, performance=0,
         old_rating=int(round(rating)), new_rating=int(round(rating)), delta=0,
         rated=False, confidence=f"unresolved: {why}",
@@ -69,42 +71,66 @@ def rated_range(rate_change: str) -> tuple[float, float] | None:
     return (float(lo) if lo else -inf, float(hi) if hi else inf)
 
 
-def candidate_sittings(user: str) -> list[dict]:
-    """Contests this user has solved problems from *after* the contest ended.
+def candidate_sittings(users) -> list[dict]:
+    """Contests these accounts have solved problems from *after* the contest ended.
 
     That is what a virtual sitting looks like from the outside. Ordered by when it happened,
     which is the order a career has to be chained in.
+
+    Several accounts are one person, as on the Codeforces side: a round sat on two of them is
+    kept once at its earliest attempt, and each sitting records the account that sat it so the
+    rank estimator knows whose submissions to look for. Competing live on *any* account rules
+    the round out for all of them -- you cannot sit a round virtually after you have seen it.
     """
+    if isinstance(users, str):
+        users = [users]
     prob_contest = {p["id"]: p["contest_id"] for p in src.problems()}
     meta = _contest_index()
-    first_seen: dict[str, int] = {}
+    first_seen: dict[str, tuple] = {}          # contest -> (when, which account)
     live: set[str] = set()
-    for s in src.user_submissions(user):
-        cid = prob_contest.get(s.get("problem_id"))
-        c = meta.get(cid)
-        if c is None:
-            continue
-        start = c["start_epoch_second"]
-        ended = start + c["duration_second"]
-        if start <= s["epoch_second"] <= ended:
-            live.add(cid)                 # competed for real; anything later is upsolving
-            continue
-        if s["epoch_second"] < start:
-            continue
-        t = s["epoch_second"]
-        if cid not in first_seen or t < first_seen[cid]:
-            first_seen[cid] = t
-    # Solving a problem after a round you actually competed in is upsolving, not a sitting.
-    first_seen = {k: v for k, v in first_seen.items() if k not in live}
+    for user in users:
+        for s in src.user_submissions(user):
+            cid = prob_contest.get(s.get("problem_id"))
+            c = meta.get(cid)
+            if c is None:
+                continue
+            start = c["start_epoch_second"]
+            ended = start + c["duration_second"]
+            if start <= s["epoch_second"] <= ended:
+                live.add(cid)             # competed for real; anything later is upsolving
+                continue
+            if s["epoch_second"] < start:
+                continue
+            t = s["epoch_second"]
+            if cid not in first_seen or t < first_seen[cid][0]:
+                first_seen[cid] = (t, user)
     out = []
-    for cid, t in first_seen.items():
+    for cid, (t, user) in first_seen.items():
+        # Solving a problem after a round you actually competed in is upsolving, not a sitting.
+        if cid in live:
+            continue
         c = meta[cid]
-        out.append({"contest_id": cid, "name": c["title"], "sat_at": t,
+        out.append({"contest_id": cid, "name": c["title"], "sat_at": t, "handle": user,
                     "held": c["start_epoch_second"], "rate_change": c.get("rate_change", "")})
     return sorted(out, key=lambda x: x["sat_at"])
 
 
-def iter_career(user: str, sittings, start_rating: float | None = None):
+def main_handle(users) -> str:
+    """Whichever account has competed most -- its real rating is the meaningful comparison."""
+    if isinstance(users, str):
+        return users
+    best, best_n = (users[0] if users else ""), -1
+    for u in users:
+        try:
+            n = len([h for h in src.user_history(u) if h.get("IsRated")])
+        except Exception:                                      # noqa: BLE001
+            n = 0
+        if n > best_n:
+            best, best_n = u, n
+    return best
+
+
+def iter_career(users, sittings, start_rating: float | None = None):
     """`sittings` is an ordered list of {contest_id, rank, sat_at}."""
     perfs: list[float] = []
     rating = 0.0 if start_rating is None else float(start_rating)
@@ -135,6 +161,7 @@ def iter_career(user: str, sittings, start_rating: float | None = None):
         yield Entry(
             contest_id=cid,
             name=c.get("title", cid),
+            handle=s.get("handle", ""),
             start=int(s.get("sat_at", c.get("start_epoch_second", 0))),
             rank=int(s["rank"]),
             field_size=len(places),
@@ -161,13 +188,15 @@ def _epoch(iso: str) -> int:
     return int(datetime.fromisoformat(iso).timestamp())
 
 
-def summarize(user: str, entries: list[dict], real: list[dict]) -> dict:
+def summarize(users, entries: list[dict], real: list[dict], real_handle: str = "") -> dict:
+    if isinstance(users, str):
+        users = [users]
     rated = [e for e in entries if e["rated"]]
     virtual = rated[-1]["new_rating"] if rated else 0
     return {
-        "handle": user,
-        "handles": [user],
-        "real_handle": user,
+        "handle": " + ".join(users),
+        "handles": users,
+        "real_handle": real_handle or (users[0] if users else ""),
         "platform": "atcoder",
         "rating": virtual,
         "peak": max((e["new_rating"] for e in rated), default=0),
@@ -177,13 +206,34 @@ def summarize(user: str, entries: list[dict], real: list[dict]) -> dict:
     }
 
 
-def career_json(user: str, sittings) -> dict:
-    entries = [asdict(e) for e in iter_career(user, sittings)]
-    real = real_curve(user)
-    return {**summarize(user, entries, real), "entries": entries, "real": real}
+def _attach_sittings(users, sittings):
+    """Put back what the page could not send: when each round was sat, and on which account.
+
+    The rank form posts contest and rank only, so without this every round is dated to when
+    the contest was *held* rather than when it was sat, and a career spanning two accounts
+    forgets which one sat what.
+    """
+    try:
+        known = {s["contest_id"]: s for s in candidate_sittings(users)}
+    except Exception:                                          # noqa: BLE001
+        return sittings
+    out = []
+    for s in sittings:
+        k = known.get(s["contest_id"])
+        out.append({**s, "sat_at": k["sat_at"], "handle": k["handle"]} if k else s)
+    return out
 
 
-def estimate_ranks(user: str, sittings, progress=None):
+def career_json(users, sittings) -> dict:
+    if isinstance(users, str):
+        users = [users]
+    entries = [asdict(e) for e in iter_career(users, _attach_sittings(users, sittings))]
+    primary = main_handle(users)
+    real = real_curve(primary)
+    return {**summarize(users, entries, real, primary), "entries": entries, "real": real}
+
+
+def estimate_ranks(users, sittings, progress=None):
     """Work out where each virtual sitting would have placed, without asking.
 
     AtCoder gates standings behind a login, so the ladder is rebuilt from the public
@@ -192,12 +242,15 @@ def estimate_ranks(user: str, sittings, progress=None):
     that matters is the performance it implies, and that lands within 25 points 92% of the
     time (median +2). Exact enough to fill the box; the box stays editable.
     """
+    if isinstance(users, str):
+        users = [users]
     meta = _contest_index()
-    mine: dict[str, list] = {}
-    for s in src.user_submissions(user):
-        cid = s.get("contest_id")
-        if cid:
-            mine.setdefault(cid, []).append(s)
+    mine: dict[tuple, list] = {}
+    for user in users:
+        for s in src.user_submissions(user):
+            cid = s.get("contest_id")
+            if cid:
+                mine.setdefault((user, cid), []).append(s)
 
     out = {}
     for n, s in enumerate(sittings):
@@ -207,8 +260,12 @@ def estimate_ranks(user: str, sittings, progress=None):
         c = meta.get(cid)
         if c is None:
             continue
+        # the sitting names the account that sat it; another account's attempt at the same
+        # round is a different sitting and would place at a different rank
+        user = s.get("handle") or users[0]
         window = (s["sat_at"], s["sat_at"] + c["duration_second"])
-        attempt = [x for x in mine.get(cid, []) if window[0] <= x["epoch_second"] <= window[1]]
+        attempt = [x for x in mine.get((user, cid), [])
+                   if window[0] <= x["epoch_second"] <= window[1]]
         if not attempt:
             continue
         try:

@@ -2,7 +2,7 @@
 # One command from a fresh clone: makes a virtualenv if needed, installs numpy,
 # starts the server and opens the page.
 #
-#   ./run.sh                # just start it
+#   ./run.sh                # start it on the handles in .env, if any
 #   ./run.sh your_handle    # and warm that handle's contests in the background
 set -euo pipefail
 cd "$(dirname "$0")"

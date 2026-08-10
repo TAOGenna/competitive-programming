@@ -52,6 +52,47 @@ def parse_handles(text: str) -> list[str]:
     return out
 
 
+def canonical_handles(handles) -> list[str]:
+    """Resolve renames and drop accounts that no longer exist, keeping the given order.
+
+    Codeforces answers to an account's old handle forever, so two names in a list can be one
+    account -- and everything downstream would fetch it twice, label the career with both,
+    and let `main_handle` pick between two copies of the same history. Deduping on the typed
+    string cannot see this; only the API knows.
+
+    Falls back to the typed list when the API is unreachable, since a slightly wrong label
+    is better than refusing to run.
+    """
+    if isinstance(handles, str):
+        handles = parse_handles(handles)
+    handles = list(handles)
+    if not handles:
+        return []
+    try:
+        resolved = [u["handle"] for u in src.user_info(handles)]
+    except src.CodeforcesError:
+        # One unknown handle fails the whole batch, so ask individually to find out which.
+        resolved = []
+        for h in handles:
+            try:
+                resolved.append(src.user_info([h])[0]["handle"])
+            except src.MissingUser:
+                continue                            # genuinely gone: drop it
+            except (src.CodeforcesError, IndexError, KeyError):
+                resolved.append(h)                  # could not tell; keep what was typed
+        # Nothing resolved is far more likely to be an outage than seven deleted accounts,
+        # and answering "you have no accounts" to that would be a lie.
+        resolved = resolved or handles
+    except Exception:                                          # noqa: BLE001 - offline
+        resolved = handles
+    seen, out = set(), []
+    for h in resolved:
+        if h.lower() not in seen:
+            seen.add(h.lower())
+            out.append(h)
+    return out
+
+
 def main_handle(handles: list[str]) -> str:
     """Whichever account has competed most -- its real rating is the meaningful comparison."""
     best, best_n = handles[0], -1
@@ -109,10 +150,15 @@ def real_participations(handles) -> list[dict]:
 
     No submission fetch is needed: the row records what they solved and how many attempts
     they burned, which is exactly what the rating calculation wants.
+
+    One round, one entry, however many accounts sat it -- the earliest wins, matching what
+    `group_virtual` does for virtual sittings. Without that a round entered on two accounts
+    would be chained twice, paying its delta twice on a timeline that is meant to be one
+    person's.
     """
     if isinstance(handles, str):
         handles = [handles]
-    out = []
+    by_contest: dict[int, dict] = {}
     for handle in handles:
         try:
             history = src.user_rating(handle)
@@ -120,6 +166,10 @@ def real_participations(handles) -> list[dict]:
             continue
         for h in history:
             cid = h["contestId"]
+            when = h["ratingUpdateTimeSeconds"]
+            cur = by_contest.get(cid)
+            if cur is not None and cur["started"] <= when:
+                continue                # already held from an earlier account; skip the fetch
             try:
                 st = src.standings(cid)
             except src.CodeforcesError:
@@ -127,10 +177,11 @@ def real_participations(handles) -> list[dict]:
             if handle not in st["handles"]:
                 continue
             i = st["handles"].index(handle)
-            out.append({"contest_id": cid, "started": h["ratingUpdateTimeSeconds"],
-                        "handle": handle, "submissions": [], "live": True,
-                        "points": float(st["points"][i]), "penalty": float(st["penalty"][i])})
-    return out
+            by_contest[cid] = {"contest_id": cid, "started": when,
+                               "handle": handle, "submissions": [], "live": True,
+                               "points": float(st["points"][i]),
+                               "penalty": float(st["penalty"][i])}
+    return sorted(by_contest.values(), key=lambda p: p["started"])
 
 
 def merged_participations(handles) -> list[dict]:
@@ -157,10 +208,25 @@ def virtual_participations(handles) -> list[dict]:
 
     The virtual start time -- not the contest's date -- sets the order, since that is when
     the round was actually sat.
+
+    An account that no longer exists is skipped rather than fatal. A list of alts accumulates
+    over years and some of them get renamed or deleted; `user.status` does not answer to an
+    old handle even though `user.info` does, so one stale name used to take the whole career
+    down with it.
+
+    Only a *missing* account is skipped. Any other failure raises, because the alternative is
+    to quietly drop an account and present the shortened career as the whole thing -- a wrong
+    answer delivered confidently, which is worse than an error.
     """
     if isinstance(handles, str):
         handles = [handles]
-    return group_virtual([(h, src.user_submissions(h)) for h in handles])
+    fetched = []
+    for h in handles:
+        try:
+            fetched.append((h, src.user_submissions(h)))
+        except src.MissingUser:
+            continue
+    return group_virtual(fetched)
 
 
 def iter_career(handle, start_rating: int | None = None, participations=None,

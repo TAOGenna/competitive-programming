@@ -25,8 +25,9 @@ Resumable: anything already cached is skipped. Safe to re-run to pick up new con
 For a single user there is no reason to warm the whole archive: pass handles and only the
 contests those accounts have actually sat are fetched.
 
-    python3 -m vrating.sources.prewarm                 # everything, for a public instance
+    python3 -m vrating.sources.prewarm                 # the handles in .env, or everything
     python3 -m vrating.sources.prewarm your_handle     # just yours, minutes not hours
+    python3 -m vrating.sources.prewarm --all           # the whole archive, .env notwithstanding
 """
 from __future__ import annotations
 
@@ -89,8 +90,11 @@ def prewarm_for(handles, log=print, workers: int = WORKERS) -> tuple[int, int]:
 
     wanted: set[int] = set()
     for handle in handles:
-        for p in engine.virtual_participations([handle]):
-            wanted.add(p["contest_id"])
+        try:                            # a renamed or deleted alt must not stop the rest
+            for p in engine.virtual_participations([handle]):
+                wanted.add(p["contest_id"])
+        except src.CodeforcesError:
+            pass
         try:
             for h in src.user_rating(handle):
                 wanted.add(h["contestId"])
@@ -116,9 +120,17 @@ def prewarm_for(handles, log=print, workers: int = WORKERS) -> tuple[int, int]:
 
 
 def main():
+    from .. import config
+    from ..career import engine
+
     log = lambda m: print(m, flush=True)
-    handles = [a for a in sys.argv[1:] if not a.startswith("-")]
+    flags = {a for a in sys.argv[1:] if a.startswith("-")}
+    # With handles in .env, a bare run means "warm mine". --all is how you still ask for the
+    # whole archive, which is half an hour and 16 GB rather than a few minutes.
+    handles = [] if "--all" in flags else (
+        [a for a in sys.argv[1:] if not a.startswith("-")] or config.handles())
     if handles:
+        handles = engine.canonical_handles(handles)      # alts and old names are one account
         log(f"warming just the contests {', '.join(handles)} have sat…")
         done, skipped = prewarm_for(handles, log)
         log(f"cached {done} contests, skipped {skipped}")

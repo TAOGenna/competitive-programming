@@ -233,53 +233,56 @@ def history(handles, virtual_ratings=None, prefetched=None, progress=None):
     `prefetched` lets the browser supply the per-user data it has already pulled from
     Codeforces itself -- {handle: {virtual, solved, real, ratings}} -- so this makes no API
     calls at all. See vrating.web.server for why that is worth doing.
+
+    Several accounts are one person here as everywhere else. A round sat on two of them is
+    one round, and it is the same sitting the career scored -- `group_virtual` picks it, so
+    the two cannot disagree about what was left unsolved. Solved problems pool across every
+    account, since upsolving something on an alt still means you have upsolved it.
     """
     from ..rating import scoring
+    from . import engine
     if isinstance(handles, str):
         handles = [handles]
 
     solved_since: set[tuple] = set()
-    virtual: dict[int, dict] = {}
     real: dict[int, str] = {}
-    real_rating: dict[int, float] = {}
+    real_rating: dict[tuple, float] = {}       # (handle, contest) -- see below
     virtual_ratings = virtual_ratings or {}
+    subs_by_handle: list[tuple] = []
 
     for handle in handles:
         have = (prefetched or {}).get(handle)
         if have is not None:
             for cid, old in (have.get("ratings") or {}).items():
-                real_rating[int(cid)] = float(old)
+                real_rating[(handle, int(cid))] = float(old)
             for cid, index in have.get("solved") or []:
                 solved_since.add((cid, index))
             for cid in have.get("real") or []:
                 real.setdefault(int(cid), handle)
-            for s in have.get("virtual") or []:
-                cid = s.get("contestId")
-                virtual.setdefault(cid, {"contest_id": cid, "handle": handle, "subs": []})
-                if virtual[cid]["handle"] == handle:
-                    virtual[cid]["subs"].append(s)
+            subs_by_handle.append((handle, have.get("virtual") or []))
             continue
 
         try:
             for h in src.user_rating(handle):
-                real_rating[h["contestId"]] = float(h["oldRating"])
+                real_rating[(handle, h["contestId"])] = float(h["oldRating"])
         except src.CodeforcesError:
             pass
-        for s in src.user_submissions(handle):
+        try:
+            subs = src.user_submissions(handle)
+        except src.MissingUser:
+            continue      # deleted alt; anything else raises rather than shrink the scan
+        for s in subs:
             cid, index = s.get("contestId"), s["problem"]["index"]
             if s.get("verdict") == "OK":
                 solved_since.add((cid, index))
-            kind = s["author"].get("participantType")
-            if kind == "VIRTUAL":
-                virtual.setdefault(cid, {"contest_id": cid, "handle": handle, "subs": []})
-                if virtual[cid]["handle"] == handle:
-                    virtual[cid]["subs"].append(s)
-            elif kind == "CONTESTANT":
+            if s["author"].get("participantType") == "CONTESTANT":
                 real.setdefault(cid, handle)
+        subs_by_handle.append((handle, subs))
 
     out = []
     seen = set()
-    for cid, v in virtual.items():
+    for p in engine.group_virtual(subs_by_handle):
+        cid = p["contest_id"]
         # gym and unrated rounds have no rated field to compare against, and asking for their
         # standings is a wasted round trip -- rating_changes already answers this from disk
         if src.rating_changes(cid) is None:
@@ -288,7 +291,7 @@ def history(handles, virtual_ratings=None, prefetched=None, progress=None):
             st = src.standings(cid)
         except src.CodeforcesError:
             continue
-        res = scoring.problem_results(v["subs"], st["problem_index"], st["duration"])
+        res = scoring.problem_results(p["submissions"], st["problem_index"], st["duration"])
         out.append({"contest_id": cid,
                     "rating_then": virtual_ratings.get(cid),
                     "unsolved": [str(i) for i in st["problem_index"] if not res[i].solved],
@@ -308,7 +311,8 @@ def history(handles, virtual_ratings=None, prefetched=None, progress=None):
         i = st["handles"].index(handle)
         times, rejects = st["pr_time"][i], st["pr_rejects"][i]
         out.append({"contest_id": cid,
-                    "rating_then": real_rating.get(cid),
+                    # the rating *that* account held, not whichever alt was read last
+                    "rating_then": real_rating.get((handle, cid)),
                     "unsolved": [str(x) for k, x in enumerate(st["problem_index"]) if times[k] < 0],
                     "attempted": [str(x) for k, x in enumerate(st["problem_index"])
                                   if times[k] < 0 and rejects[k] > 0]})

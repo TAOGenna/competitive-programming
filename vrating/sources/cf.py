@@ -7,6 +7,7 @@ Two API constraints shape this module:
 """
 from __future__ import annotations
 
+import functools
 import json
 import os
 import threading
@@ -38,27 +39,74 @@ class CodeforcesError(RuntimeError):
     """The API refused a request. Carries the API's own explanation where there is one."""
 
 
+class MissingUser(CodeforcesError):
+    """The account does not exist -- deleted, or renamed and asked for by its old name.
+
+    Kept apart from every other failure because it is the only permanent one. A caller may
+    reasonably drop a handle that no longer exists; dropping one that merely timed out would
+    quietly shorten a career and report the result as though it were complete.
+    """
+
+
+class Unavailable(CodeforcesError):
+    """The API could not be reached, after retries. Says nothing about what was asked for.
+
+    The distinction earns its keep at the cache: this module records "unrated" and "will not
+    serve this" as permanent facts on disk, and a contest tombstoned because Codeforces was
+    briefly down stays wrong until the cache is deleted by hand.
+    """
+
+
+# Codeforces sheds load with a 5xx when several requests arrive together, and answers a burst
+# with "Call limit exceeded". Both pass on a retry; a 400 explaining what is wrong does not.
+RETRIES = 4
+_MISSING = ("not found", "no such user")
+_TRANSIENT = ("call limit exceeded", "service unavailable", "temporarily unavailable")
+
+
 def _get(method: str, **params) -> object:
     # handles are user input and land in a query string; encode rather than interpolate
     q = urllib.parse.urlencode(params)
     url = f"{API}/{method}" + (f"?{q}" if q else "")
-    _throttle()
-    try:
-        with urllib.request.urlopen(url, timeout=60) as r:
-            payload = json.load(r)
-    except urllib.error.HTTPError as exc:
-        # Codeforces answers "no such thing" with 400 and a JSON body explaining why --
-        # an unrated contest asked for its rating changes, for instance.
+    delay = 1.0
+    for attempt in range(RETRIES):
+        _throttle()
+        transient = None
         try:
-            comment = json.load(exc).get("comment", "")
-        except Exception:
-            comment = exc.reason
-        raise CodeforcesError(f"{method}: {comment}") from None
-    except urllib.error.URLError as exc:
-        raise CodeforcesError(f"{method}: {exc.reason}") from None
-    if payload.get("status") != "OK":
-        raise CodeforcesError(f"{method}: {payload.get('comment')}")
-    return payload["result"]
+            with urllib.request.urlopen(url, timeout=60) as r:
+                payload = json.load(r)
+        except urllib.error.HTTPError as exc:
+            # Codeforces answers "no such thing" with 400 and a JSON body explaining why --
+            # an unrated contest asked for its rating changes, for instance.
+            try:
+                comment = json.load(exc).get("comment", "")
+            except Exception:
+                comment = exc.reason
+            text = str(comment).lower()
+            if any(m in text for m in _MISSING):
+                raise MissingUser(f"{method}: {comment}") from None
+            if exc.code < 500 and not any(t in text for t in _TRANSIENT):
+                raise CodeforcesError(f"{method}: {comment}") from None
+            transient = f"{method}: {comment}"
+        except urllib.error.URLError as exc:
+            transient = f"{method}: {exc.reason}"
+        except (ValueError, TimeoutError) as exc:          # truncated or unparseable body
+            transient = f"{method}: {exc}"
+        else:
+            if payload.get("status") == "OK":
+                return payload["result"]
+            comment = payload.get("comment") or ""
+            text = str(comment).lower()
+            if any(m in text for m in _MISSING):
+                raise MissingUser(f"{method}: {comment}")
+            if not any(t in text for t in _TRANSIENT):
+                raise CodeforcesError(f"{method}: {comment}")
+            transient = f"{method}: {comment}"
+        if attempt == RETRIES - 1:
+            raise Unavailable(f"{transient} (after {RETRIES} attempts)")
+        time.sleep(delay)
+        delay *= 2
+    raise AssertionError("unreachable")
 
 
 def _cached_json(name: str, fetch):
@@ -103,6 +151,8 @@ def rating_changes(contest_id: int) -> dict | None:
     else:
         try:
             rows = _get("contest.ratingChanges", contestId=contest_id)
+        except Unavailable:
+            raise                          # an outage is not evidence the contest is unrated
         except CodeforcesError:
             rows = []                      # unrated contest, or one the API will not serve
 
@@ -149,6 +199,8 @@ def standings(contest_id: int) -> dict:
         raise CodeforcesError(f"contest.standings: {dead.read_text()[:120]}")
     try:
         res = _get("contest.standings", contestId=contest_id)
+    except Unavailable:
+        raise                        # do not tombstone a contest because the API was down
     except CodeforcesError as exc:
         dead.write_text(str(exc))
         raise
@@ -215,3 +267,21 @@ def user_submissions(handle: str) -> list[dict]:
 
 def user_rating(handle: str) -> list[dict]:
     return _get("user.rating", handle=handle)
+
+
+@functools.lru_cache(maxsize=64)
+def _user_info(key: tuple) -> list[dict]:
+    return _get("user.info", handles=";".join(key))
+
+
+def user_info(handles) -> list[dict]:
+    """Current profiles, in request order. One call for the whole list.
+
+    The reason this exists is renames: Codeforces keeps answering to an account's old handle
+    forever, so `user.info` is the only thing that says whether two names are two people.
+    Not cached to disk -- a rename would be pinned until someone deleted the file -- but
+    memoized, since the answer is asked for on every page load.
+
+    Raises if *any* handle is unknown: the API fails the batch, not the entry.
+    """
+    return _user_info(tuple(handles))

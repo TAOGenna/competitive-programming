@@ -252,11 +252,6 @@ tbody tr{animation:in .28s ease both}
     <button type="button" data-mode="merged">Alongside my real contests</button>
   </div>
 
-  <div class="modes" id="modes">
-    <button type="button" data-mode="virtual" class="on">Virtual rounds only</button>
-    <button type="button" data-mode="merged">Alongside my real contests</button>
-  </div>
-
   <div id="msg">Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.</div>
 
   <div id="rd-panel" hidden>
@@ -340,7 +335,9 @@ const band=r=>(BANDS.find(b=>r>=b[0]&&r<b[1])||BANDS[0])[2];
 const NS="http://www.w3.org/2000/svg";
 const $=id=>document.getElementById(id);
 
-let entries=[], real=[], expected=0, manyAccounts=false, lastUsers=null;
+let entries=[], real=[], expected=0, manyAccounts=false, lastUsers=null, lastNames=null;
+let lastGone=[];   // handles that no longer resolve; reported, never silently dropped
+let configured={cf:[],ac:[]};   // VRATING_HANDLES / VRATING_AC_HANDLES, from the server
 let alternates={}, actualFinal=null;
 let mergeReal=false;   // false: only virtual rounds. true: interleaved with real ones.
 document.querySelectorAll("#modes button").forEach(b=>{
@@ -392,14 +389,16 @@ function showTip(ev,e,ghostRating){
              `(<span>${d>=0?"+":""}${d}</span>)</div>`;})()+
     `<div class="meta">${when}${manyAccounts?" · sat on "+e.handle:""}`+
     (ghostRating==null?"":` · real rating then <span>${ghostRating}</span>`)+`</div>`+
-    // only URL shapes verified against Codeforces' own documented forms
-    `<div class="links">`+
+    // only URL shapes verified against Codeforces' own documented forms.
+    // The round's own account, not the primary one: on several accounts they differ, and
+    // the card has just said which one sat it.
+    (mine=>`<div class="links">`+
       `<a href="${standingsUrl(e)}" target="_blank" rel="noopener">Standings</a>`+
       (platform==="cf"
         ? `<a href="${CF}/contest/${e.contest_id}/status" target="_blank" rel="noopener">All submissions</a>`+
-          `<a href="${CF}/submissions/${encodeURIComponent(currentHandle)}" target="_blank" rel="noopener">Yours</a>`
-        : `<a href="${AC}/contests/${e.contest_id}/submissions?f.User=${encodeURIComponent(currentHandle)}" target="_blank" rel="noopener">Your submissions</a>`)+
-    `</div>`;
+          `<a href="${CF}/submissions/${encodeURIComponent(mine)}" target="_blank" rel="noopener">Yours</a>`
+        : `<a href="${AC}/contests/${e.contest_id}/submissions?f.User=${encodeURIComponent(mine)}" target="_blank" rel="noopener">Your submissions</a>`)+
+    `</div>`)(e.handle||currentHandle);
   t.hidden=false;
   const pad=14, w=t.offsetWidth, h=t.offsetHeight;
   let x=ev.clientX+pad, y=ev.clientY-h-pad;
@@ -552,17 +551,92 @@ function stats(s){
   $("v-div").className="v "+(d>=0?"up":"down");
 }
 
+/** Split a typed list on commas or whitespace, dropping repeats but keeping order. */
+function splitHandles(text){
+  const seen=new Set(), out=[];
+  for(const h of text.replace(/,/g," ").split(/\s+/).filter(Boolean)){
+    if(seen.has(h.toLowerCase()))continue;
+    seen.add(h.toLowerCase());out.push(h);
+  }
+  return out;
+}
+
+/** One account, however many names reach it. Codeforces answers to an old handle forever,
+ *  so two entries in the box can be the same person -- and without this they are fetched,
+ *  scored and labelled twice. Only the handle the account's own submissions carry says so. */
+function dedupeUsers(users){
+  const seen=new Map();
+  for(const u of users)if(!seen.has(u.handle.toLowerCase()))seen.set(u.handle.toLowerCase(),u);
+  return [...seen.values()];
+}
+
+/** The account is gone: deleted, or asked for by a name it no longer uses. The only
+ *  permanent failure, and the only one it is safe to carry on without. */
+class HandleGone extends Error{
+  constructor(handle,why){ super(`${handle}: ${why}`); this.handle=handle; }
+}
+
+const CF_API="https://codeforces.com/api/";
+const GONE=/not found|no such user/i;
+const TRANSIENT=/call limit exceeded|service unavailable|temporarily/i;
+
+/** One Codeforces call, retried through the failures that pass on their own.
+ *
+ *  Codeforces answers a burst of requests with a 503 or "Call limit exceeded" — six accounts
+ *  fired at once is twelve requests and reliably loses some. Those come back on a retry; a
+ *  deleted handle never will. Telling the two apart is the whole point: a dropped account
+ *  silently shortens the career and the page reports the result as if it were complete. */
+async function cfApi(method,handle,tries=4){
+  let last="";
+  for(let i=0;i<tries;i++){
+    if(i)await new Promise(r=>setTimeout(r,500*(1<<i)));      // 1s, 2s, 4s
+    let res,d;
+    try{ res=await fetch(CF_API+method+"?handle="+encodeURIComponent(handle)); }
+    catch(err){ last=err.message||"network error"; continue; }
+    try{ d=await res.json(); }catch(err){ last="unreadable response"; continue; }
+    if(d.status==="OK")return d.result||[];
+    last=d.comment||`HTTP ${res.status}`;
+    if(GONE.test(last))throw new HandleGone(handle,last);
+    if(!TRANSIENT.test(last)&&res.status<500)throw new Error(`${handle}: ${last}`);
+  }
+  throw new Error(`${handle}: ${last} (after ${tries} attempts)`);
+}
+
+/** Fetch every account, a couple at a time.
+ *
+ *  Concurrency is deliberately small: firing every account at once is what provokes the 503s
+ *  above. Two in flight — four requests — gets through without needing the retries.
+ *  Returns [users, gone]; anything that is not a missing account throws, because replaying
+ *  five of six accounts and calling it your career is a wrong answer, not a partial one. */
+async function loadUsers(names){
+  const slots=new Array(names.length).fill(null), gone=[];
+  let next=0;
+  async function worker(){
+    for(let i;(i=next++)<names.length;){
+      try{ slots[i]=await cfUser(names[i]); }
+      catch(err){
+        if(!(err instanceof HandleGone))throw err;
+        gone.push(names[i]);
+      }
+    }
+  }
+  await Promise.all([worker(),worker()]);
+  const users=dedupeUsers(slots.filter(Boolean));
+  if(!users.length)throw new Error("no account could be read"+(gone.length?": "+gone.join(", "):""));
+  return [users,gone];
+}
+
 /** Pull one account's data straight from Codeforces. CORS is open on these endpoints, so
- *  this runs against the visitor's own rate-limit budget rather than the server's shared one,
- *  and both calls for both accounts go out at once. */
+ *  this runs against the visitor's own rate-limit budget rather than the server's shared one. */
 async function cfUser(handle){
-  const base="https://codeforces.com/api/";
-  const [status,rating]=await Promise.all([
-    fetch(base+"user.status?handle="+encodeURIComponent(handle)).then(r=>r.json()),
-    fetch(base+"user.rating?handle="+encodeURIComponent(handle)).then(r=>r.json()),
+  const [all,rat]=await Promise.all([
+    cfApi("user.status",handle),
+    cfApi("user.rating",handle),
   ]);
-  if(status.status!=="OK")throw new Error(status.comment||("no such handle: "+handle));
-  const all=status.result||[], rat=(rating.status==="OK"?rating.result:[])||[];
+  // The account's own submissions are stamped with its *current* handle, which is how a
+  // renamed account gives itself away. Nothing to go on if it has never submitted.
+  const named=all.find(s=>s.author&&s.author.members&&s.author.members[0]);
+  const canonical=named?named.author.members[0].handle:handle;
   // Send only the fields the scorer reads. Geothermal's raw virtual submissions are ~960 KB;
   // trimmed they are a fraction of that, and nothing downstream looks at the rest.
   const subs=all.filter(s=>s.author&&s.author.participantType==="VIRTUAL").map(s=>({
@@ -581,7 +655,7 @@ async function cfUser(handle){
   const real=[...new Set(all.filter(s=>s.author&&s.author.participantType==="CONTESTANT")
       .map(s=>s.contestId))];
   const ratings=Object.fromEntries(rat.map(h=>[h.contestId,h.oldRating]));
-  return {handle, subs, rating:rat, solved, real, ratings};
+  return {handle:canonical, typed:handle, subs, rating:rat, solved, real, ratings};
 }
 
 /** Read an SSE-formatted body off a streaming fetch. EventSource cannot POST. */
@@ -607,15 +681,20 @@ async function run(handle){
   $("log").innerHTML="";$("out").hidden=true;$("go").disabled=true;
   $("msg").textContent="Reading your Codeforces history…";
   try{
-    const names=handle.replace(/,/g," ").split(/\s+/).filter(Boolean);
-    const users=await Promise.all(names.map(cfUser));            // all accounts at once
-    lastUsers=users;
+    const names=splitHandles(handle);
+    // Switching framing re-runs this with the same accounts; their Codeforces data has not
+    // changed, and refetching it is a dozen requests the API would rather not have.
+    const reuse=lastUsers&&lastNames&&lastNames.length===names.length&&
+                lastNames.every((n,i)=>n===names[i]);
+    const [users,gone]=reuse?[lastUsers,lastGone]:await loadUsers(names);
+    lastUsers=users;lastNames=names;lastGone=gone;
     const primary=users.reduce((a,b)=>b.rating.length>a.rating.length?b:a,users[0]);
     const payload={
       handles:users.map(u=>u.handle),
       submissions:Object.fromEntries(users.map(u=>[u.handle,u.subs])),
       real:primary.rating.map(h=>({t:h.ratingUpdateTimeSeconds,rating:h.newRating})),
       real_handle:primary.handle,
+      merged:mergeReal,
     };
     const res=await fetch("/api/stream",{method:"POST",
       headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
@@ -643,6 +722,7 @@ async function run(handle){
         stats(d);draw();
         const skipped=expected-entries.length, unrated=entries.length-d.contests;
         const notes=[];
+        if(lastGone.length)notes.push(`no such account: ${lastGone.join(", ")} — left out`);
         if(skipped)notes.push(`${skipped} gym or unrated round${skipped>1?"s":""} skipped — Codeforces never rated them`);
         if(unrated)notes.push(`${unrated} round${unrated>1?"s":""} you'd have been ineligible for at the time`);
         $("msg").textContent=notes.join(" · ");
@@ -764,7 +844,9 @@ document.querySelectorAll(".rd-sort button").forEach(b=>{
 });
 
 // ---------- AtCoder ----------
-let acSittings=[];
+// `currentHandle` is the account whose real rating is drawn; `acHandles` is every account the
+// career is built from. They are the same until you replay more than one.
+let acSittings=[], acHandles=[];
 
 function setPlatform(p){
   platform=p;
@@ -778,11 +860,17 @@ function setPlatform(p){
   $("rd-panel").hidden=!reading;
   $("ac-panel").hidden=true;$("out").hidden=true;$("ac-list").innerHTML="";
   if(reading){ $("msg").textContent=""; rdLoad(); return; }
-  $("h").placeholder=p==="ac"?"atcoder handle":"handle — or several, comma separated";
+  $("h").placeholder="handle — or several, comma separated";
   $("go").textContent=p==="ac"?"Find rounds":"Replay";
   $("msg").textContent=p==="ac"
-    ? "Enter your AtCoder handle to find the rounds you've sat outside the live window."
+    ? "Enter your AtCoder handle — or several — to find the rounds you've sat outside the live window."
     : "Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.";
+  // The two platforms are separate namespaces, so swap the box over to this one's configured
+  // accounts -- but never over something typed by hand.
+  const mine=(p==="ac"?configured.ac:configured.cf).join(", ");
+  const other=(p==="ac"?configured.cf:configured.ac).join(", ");
+  const box=$("h").value.trim();
+  if(mine&&(box===""||box===other))$("h").value=mine;
 }
 $("tab-cf").addEventListener("click",()=>setPlatform("cf"));
 $("tab-ac").addEventListener("click",()=>setPlatform("ac"));
@@ -793,15 +881,19 @@ async function acFind(handle){
   try{
     const d=await (await fetch("/api/ac/candidates?handle="+encodeURIComponent(handle))).json();
     if(d.error)throw new Error(d.error);
-    real=d.real||[];currentHandle=handle;acSittings=d.sittings||[];
+    real=d.real||[];acSittings=d.sittings||[];
+    acHandles=d.handles||splitHandles(handle);
+    currentHandle=d.real_handle||handle;
+    manyAccounts=acHandles.length>1;
+    $("lg-real").textContent=manyAccounts?`${currentHandle}'s real rating`:"your real rating";
     if(!acSittings.length){
-      $("msg").textContent=`No rounds found for ${handle} outside their live window.`;return;
+      $("msg").textContent=`No rounds found for ${d.handle||handle} outside their live window.`;return;
     }
     $("ac-list").innerHTML=acSittings.map((s,i)=>{
       const when=new Date(s.sat_at*1000).toISOString().slice(0,10);
       return `<label class="ac-row"><span class="n" title="${s.name}">`+
         `<a href="${AC}/contests/${s.contest_id}" target="_blank" rel="noopener">${s.contest_id}</a>`+
-        ` ${s.name}</span>`+
+        ` ${s.name}${manyAccounts?` <span class="cf">${s.handle}</span>`:""}</span>`+
         `<span class="w">${when}</span>`+
         `<input type="number" min="1" placeholder="rank" data-c="${s.contest_id}" data-i="${i}"></label>`;
     }).join("");
@@ -816,7 +908,7 @@ $("ac-est").addEventListener("click",async()=>{
   $("ac-est").disabled=true;
   $("msg").textContent="Rebuilding standings from public submissions…";
   try{
-    const res=await fetch("/api/ac/estimate?handle="+encodeURIComponent(currentHandle));
+    const res=await fetch("/api/ac/estimate?handle="+encodeURIComponent(acHandles.join(",")));
     await streamEvents(res,(name,d)=>{
       if(name==="progress"){
         $("msg").textContent=`Rebuilding ${d.done+1} of ${d.total} — ${d.label} `+
@@ -846,10 +938,12 @@ $("ac-go").addEventListener("click",async()=>{
   const ranks=filled.map(i=>`${i.dataset.c}:${Math.round(Number(i.value))}`).join(",");
   $("ac-go").disabled=true;$("msg").textContent=`Replaying ${filled.length} rounds…`;
   try{
-    const d=await (await fetch(`/api/ac/career?handle=${encodeURIComponent(currentHandle)}&ranks=${encodeURIComponent(ranks)}`)).json();
+    const d=await (await fetch(`/api/ac/career?handle=${encodeURIComponent(acHandles.join(","))}&ranks=${encodeURIComponent(ranks)}`)).json();
     if(d.error)throw new Error(d.error);
-    entries=d.entries;real=d.real||[];manyAccounts=false;
-    $("lg-real").textContent="your real rating";
+    entries=d.entries;real=d.real||[];
+    manyAccounts=(d.handles||[]).length>1;
+    currentHandle=d.real_handle||currentHandle;
+    $("lg-real").textContent=manyAccounts?`${currentHandle}'s real rating`:"your real rating";
     $("log").innerHTML="";entries.forEach(row);
     stats(d);draw();$("out").hidden=false;
     const bad=entries.filter(e=>String(e.confidence).startsWith("unresolved"));
@@ -869,12 +963,12 @@ $("up-go").addEventListener("click",async()=>{
   $("up-go").disabled=true;$("up-out").hidden=true;
   $("up-msg").textContent="Reading every round you have sat…";
   try{
-    const names=h.replace(/,/g," ").split(/\s+/).filter(Boolean);
-    const users=(lastUsers&&lastUsers.length===names.length&&
-                 lastUsers.every((u,i)=>u.handle===names[i]))
+    const names=splitHandles(h);
+    const users=(lastNames&&lastNames.length===names.length&&
+                 lastNames.every((n,i)=>n===names[i]))
       ? lastUsers                                     // the replay already pulled this
-      : await Promise.all(names.map(cfUser));
-    lastUsers=users;
+      : (await loadUsers(names))[0];
+    lastUsers=users;lastNames=names;
     const primary=users.reduce((a,b)=>b.rating.length>a.rating.length?b:a,users[0]);
     const res=await fetch("/api/upsolve",{method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -883,6 +977,7 @@ $("up-go").addEventListener("click",async()=>{
         submissions:Object.fromEntries(users.map(u=>[u.handle,u.subs])),
         real:primary.rating.map(x=>({t:x.ratingUpdateTimeSeconds,rating:x.newRating})),
         real_handle:primary.handle,
+        merged:mergeReal,
         prefetched:Object.fromEntries(users.map(u=>[u.handle,
           {virtual:u.subs, solved:u.solved, real:u.real, ratings:u.ratings}])),
       })});
@@ -947,10 +1042,23 @@ $("f").addEventListener("submit",ev=>{
   if(platform==="ac"){acFind(h);return;}
   location.hash=h;run(h);
 });
-if(location.hash.length>1){
-  const h=decodeURIComponent(location.hash.slice(1));
-  $("h").value=h;run(h);
+
+/** Open on the accounts this instance is for -- VRATING_HANDLES in .env -- instead of on an
+ *  empty box. The hash always wins, so looking someone else up still works, and typing over
+ *  the box is never undone. */
+async function boot(){
+  try{
+    const d=await (await fetch("/api/handles")).json();
+    configured={cf:d.handles||[], ac:d.ac_handles||[]};
+  }catch(err){ /* server not answering yet; the box still works by hand */ }
+  const hash=location.hash.length>1?decodeURIComponent(location.hash.slice(1)):"";
+  const h=hash||configured.cf.join(", ");
+  if(!h)return;
+  $("h").value=h;
+  if(!hash)location.hash=h;
+  run(h);
 }
+boot();
 </script>
 </body>
 </html>

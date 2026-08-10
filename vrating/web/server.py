@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dataclasses import asdict as _asdict
 
+from .. import config
 from ..career import atcoder, engine, upsolve
 from ..sources import blogs, cf as src
 
@@ -118,6 +119,16 @@ class Handler(BaseHTTPRequestHandler):
                         else "run: python3 -m vrating.sources.prewarm",
             })
 
+        if url.path == "/api/handles":
+            # The accounts this instance belongs to, so the page starts on them instead of
+            # on an empty box. Renames are resolved here, once, rather than by every caller.
+            configured = config.handles()
+            return self._send(200, {
+                "handles": engine.canonical_handles(configured) if configured else [],
+                "configured": configured,
+                "ac_handles": config.ac_handles(),
+            })
+
         if url.path == "/api/blogs":
             return self._blogs(refresh=bool(query.get("refresh")))
 
@@ -131,53 +142,56 @@ class Handler(BaseHTTPRequestHandler):
             handle = (query.get("handle") or [""])[0].strip()
             if not handle:
                 return self._send(400, {"error": "handle required"})
-            return self._upsolve(handle)
+            return self._upsolve(handle, merged=bool(query.get("merged")))
 
         if url.path == "/api/ac/candidates":
-            handle = (query.get("handle") or [""])[0].strip()
-            if not handle:
+            handles = engine.parse_handles((query.get("handle") or [""])[0])
+            if not handles:
                 return self._send(400, {"error": "handle required"})
             try:
+                primary = atcoder.main_handle(handles)
                 return self._send(200, {
-                    "handle": handle,
-                    "sittings": atcoder.candidate_sittings(handle),
-                    "real": atcoder.real_curve(handle),
+                    "handle": " + ".join(handles),
+                    "handles": handles,
+                    "real_handle": primary,
+                    "sittings": atcoder.candidate_sittings(handles),
+                    "real": atcoder.real_curve(primary),
                 })
             except Exception as exc:
                 return self._send(200, {"error": str(exc)})
 
         if url.path == "/api/ac/estimate":
-            handle = (query.get("handle") or [""])[0].strip()
-            if not handle:
+            handles = engine.parse_handles((query.get("handle") or [""])[0])
+            if not handles:
                 return self._send(400, {"error": "handle required"})
-            return self._ac_estimate(handle)
+            return self._ac_estimate(handles)
 
         if url.path == "/api/ac/career":
-            handle = (query.get("handle") or [""])[0].strip()
+            handles = engine.parse_handles((query.get("handle") or [""])[0])
             ranks = (query.get("ranks") or [""])[0]
             sittings = _parse_ranks(ranks)
-            if not handle or not sittings:
+            if not handles or not sittings:
                 return self._send(400, {"error": "handle and at least one rank required"})
             try:
-                return self._send(200, atcoder.career_json(handle, sittings))
+                return self._send(200, atcoder.career_json(handles, sittings))
             except Exception as exc:
                 return self._send(200, {"error": str(exc)})
 
         return self._send(404, {"error": "not found"})
 
-    def _ac_estimate(self, handle):
+    def _ac_estimate(self, handles):
         """Rebuild each round's standings and slot the user's attempt in. Streams: a busy
         ABC needs ~70 requests to reconstruct, so ranks arrive one contest at a time."""
         self._sse_headers()
         try:
-            sittings = atcoder.candidate_sittings(handle)
-            self._event("meta", {"handle": handle, "total": len(sittings)})
+            sittings = atcoder.candidate_sittings(handles)
+            self._event("meta", {"handle": " + ".join(handles), "total": len(sittings)})
 
             def progress(done, total, label):
                 self._event("progress", {"done": done, "total": total, "label": label})
 
             with self._heartbeat():
-                ranks = atcoder.estimate_ranks(handle, sittings, progress=progress)
+                ranks = atcoder.estimate_ranks(handles, sittings, progress=progress)
             self._event("done", {"ranks": ranks})
         except BrokenPipeError:
             pass
@@ -207,16 +221,23 @@ class Handler(BaseHTTPRequestHandler):
                 pass
         self.close_connection = True
 
-    def _upsolve(self, handle, parts=None, real=None, primary=None, prefetched=None):
+    def _upsolve(self, handle, parts=None, real=None, primary=None, prefetched=None,
+                 merged=False):
         self._sse_headers()
         if not _scans.acquire(timeout=120):
             self._event("failed", {"error": "server busy, try again in a moment"})
             self.close_connection = True
             return
         try:
-            handles = handle if isinstance(handle, list) else engine.parse_handles(handle)
+            handles = handle if isinstance(handle, list) else engine.canonical_handles(handle)
+            if not handles:
+                raise src.CodeforcesError("no such account")
             if parts is None:
-                career = engine.career_json(handles)
+                # the career supplies each round's rating_then, so it has to be the same
+                # framing the page is showing -- otherwise peers are compared against a
+                # rating the user is not looking at
+                built = (engine.merged_participations(handles) if merged else None)
+                career = engine.career_json(handles, participations=built)
             else:
                 entries = [asdict(e) for e in engine.build_career(handles, participations=parts)]
                 career = engine.summarize(handles, entries, real or [], primary or handles[0])
@@ -295,7 +316,12 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return
         try:
-            handles = handle if isinstance(handle, list) else engine.parse_handles(handle)
+            # A handle typed into the URL may be an account's old name. user.info resolves
+            # it; user.status does not, so resolving first is what keeps a renamed alt from
+            # failing the whole replay.
+            handles = handle if isinstance(handle, list) else engine.canonical_handles(handle)
+            if not handles:
+                raise src.CodeforcesError("no such account")
             if primary is None:
                 primary = engine.main_handle(handles)
             if real is None:
