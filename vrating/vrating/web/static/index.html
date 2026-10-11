@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vrating — the career you'd have had</title>
+<style>
+:root{
+  color-scheme:light;
+  /* All chrome is achromatic with a blue cast. Rank colour is the only hue on the page. */
+  --ink:#0e1116; --ink-2:#2b323d; --muted:#767f8c;
+  --paper:#f2f4f7; --panel:#fff; --rule:#d7dce3; --rule-soft:#e7ebf0;
+  --ghost:#98a2b0;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --cond:"Avenir Next Condensed","Helvetica Neue",sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}   /* a display rule otherwise beats the attribute */
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);
+     -webkit-font-smoothing:antialiased}
+.shell{max-width:1120px;margin:0 auto;padding:0 22px 80px}
+
+/* ---- top rail: the instrument's header ---- */
+.rail{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+      padding:22px 0 16px;border-bottom:1px solid var(--rule)}
+.mark{font-family:var(--cond);font-size:23px;letter-spacing:.14em;text-transform:uppercase;
+      font-weight:600}
+.mark b{font-weight:600;border-bottom:3px solid var(--ink);padding-bottom:1px}
+.tag{font-family:var(--cond);font-size:12px;letter-spacing:.15em;text-transform:uppercase;
+     color:var(--muted);flex:1;min-width:200px}
+form{display:flex;gap:0;border:1px solid var(--ink);border-radius:2px;overflow:hidden;
+     background:var(--panel)}
+input{font-family:var(--mono);font-size:13px;padding:9px 12px;border:0;outline:0;width:290px;
+      background:transparent;color:var(--ink)}
+input::placeholder{color:var(--muted)}
+button{font-family:var(--cond);font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+       font-weight:600;padding:9px 16px;border:0;background:var(--ink);color:var(--paper);
+       cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* ---- readout: giant tabular numerals, the divergence is the headline ---- */
+.readout{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--rule)}
+.cell{padding:20px 30px 20px 0;margin-right:30px;border-right:1px solid var(--rule-soft)}
+.cell:last-child{border-right:0}
+.cell .k{font-family:var(--cond);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+         color:var(--muted);margin-bottom:5px}
+.cell .v{font-family:var(--mono);font-size:38px;line-height:1;font-variant-numeric:tabular-nums;
+         letter-spacing:-.02em}
+.cell .v small{font-size:14px;color:var(--muted);letter-spacing:0}
+
+/* ---- chart ---- */
+.plot{position:relative;margin-top:26px;border:1px solid var(--rule);background:var(--panel)}
+#tip{position:fixed;z-index:20;background:var(--panel);
+     border:1px solid var(--rule);box-shadow:0 6px 24px #0e111622;padding:9px 12px;
+     font-size:12.5px;line-height:1.55;max-width:310px}
+#tip .r{font-family:var(--mono);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#tip .title{text-transform:capitalize}
+#tip .name{display:block;margin-top:3px;font-weight:600}
+#tip .meta{color:var(--muted);font-size:11.5px;margin-top:2px}
+#tip .meta span{font-family:var(--mono)}
+#tip .links{margin-top:7px;padding-top:6px;border-top:1px solid var(--rule-soft);
+            display:flex;gap:14px;font-size:11.5px}
+/* links stay ink, not a new hue -- the underline carries the affordance */
+a{color:inherit;text-decoration:none;border-bottom:1px solid #0e111633}
+a:hover{border-bottom-color:var(--ink)}
+a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:26px;flex-wrap:wrap;padding:10px 16px;
+        border-bottom:1px solid var(--rule-soft);color:var(--muted);
+        font-family:var(--body);font-size:11.5px}
+.legend b{color:var(--ink-2);font-weight:600}
+.legend i{display:inline-block;width:26px;height:0;border-top-width:2px;margin-right:8px;
+          vertical-align:middle}
+.legend .v i{border-top-style:solid;border-color:var(--ink)}
+.legend .r i{border-top-style:dashed;border-color:var(--ghost)}
+
+/* ---- contest log ---- */
+table{border-collapse:collapse;width:100%;margin-top:30px;font-family:var(--mono);font-size:12.5px}
+th{font-family:var(--cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+   color:var(--muted);font-weight:600;text-align:right;padding:0 12px 8px;
+   border-bottom:1px solid var(--rule)}
+td{text-align:right;padding:8px 12px;border-bottom:1px solid var(--rule-soft);
+   font-variant-numeric:tabular-nums;white-space:nowrap}
+th.l,td.l{text-align:left;white-space:normal;font-family:var(--body);min-width:210px}
+tbody tr{animation:in .28s ease both}
+@keyframes in{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
+.up{color:#12833b}.down{color:#c02a1d}
+.chip{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid #0003;
+      vertical-align:-1px}
+.cf{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted)}
+.cf.exact{color:#12833b}
+.todo{margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.todo>span{font-family:var(--cond);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--muted);margin-right:2px}
+.todo a{font-family:var(--mono);font-size:11px;padding:1px 6px;border:1px solid var(--rule);
+        border-radius:2px;color:var(--muted);background:var(--paper)}
+.todo a:hover{border-color:var(--ink);color:var(--ink)}
+/* you had a go at this one -- worth a second look before the ones you never opened */
+.todo a.tried{border-color:#c02a1d55;color:#c02a1d}
+.todo a.tried:hover{border-color:#c02a1d}
+
+/* ---- platform tabs + AtCoder rank entry ---- */
+.tabs{display:flex;gap:0;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.tabs button{background:var(--panel);color:var(--muted);border:0;padding:8px 14px;
+             font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+             font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+.modes{display:flex;gap:0;margin:16px 0 0}
+.modes button{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+              border-right:0;padding:7px 13px;font-size:11px}
+.modes button:last-child{border-right:1px solid var(--rule)}
+.modes button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#ac-panel{padding:4px 0 8px}
+.ac-note{color:var(--muted);font-size:12px;line-height:1.6;max-width:70ch;margin:6px 0 16px}
+#ac-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:8px 22px;
+         margin-bottom:18px}
+.ac-row{display:flex;align-items:baseline;gap:10px;padding:6px 0;
+        border-bottom:1px solid var(--rule-soft)}
+.ac-row .n{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-row .w{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+           color:var(--muted)}
+.ac-row input{width:78px;font-family:var(--mono);font-size:12.5px;padding:4px 7px;
+              border:1px solid var(--rule);background:var(--panel);color:var(--ink);
+              text-align:right}
+#ac-go{padding:9px 16px}
+.ac-actions{display:flex;gap:10px;align-items:center}
+#ac-est{padding:9px 16px;background:var(--panel);color:var(--ink);border:1px solid var(--ink)}
+#ac-est:hover:not(:disabled){background:var(--rule-soft)}
+.ac-row input.guess{border-color:var(--ink);background:var(--rule-soft)}
+
+/* ---- reading shelf ----
+   Cards lead with the community score: these are "the most interesting blogs", and that
+   score is the only measurable version of that claim. Everything else stays quiet. */
+.rd-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:18px 0 14px}
+#rd-q{width:260px;font-family:var(--body);font-size:13px;padding:8px 11px;
+      border:1px solid var(--rule);background:var(--panel)}
+.rd-sort{display:flex}
+.rd-sort button{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+                border-right:0;padding:7px 12px;font-size:11px}
+.rd-sort button:last-child{border-right:1px solid var(--rule)}
+.rd-sort button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rd-hide{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+.rd-hide input{width:auto;padding:0;margin:0}
+#rd-refresh{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+            padding:7px 12px;font-size:11px;margin-left:auto}
+#rd-refresh:hover:not(:disabled){border-color:var(--ink);color:var(--ink)}
+.rd-topics{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.rd-topics button{background:var(--panel);color:var(--ink-2);border:1px solid var(--rule);
+                  padding:5px 11px;font-family:var(--body);font-size:12px;letter-spacing:0;
+                  text-transform:none;font-weight:400}
+.rd-topics button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rd-topics button b{font-family:var(--mono);font-size:11px;opacity:.55;margin-left:5px}
+.rd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.card{position:relative;display:flex;flex-direction:column;gap:7px;padding:15px 16px 14px;
+      border:1px solid var(--rule);background:var(--panel);text-decoration:none;color:inherit;
+      transition:border-color .12s,transform .12s}
+.card:hover{border-color:var(--ink);transform:translateY(-2px)}
+.card.read{opacity:.5}
+.card .eyebrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+   font-family:var(--cond);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+   color:var(--muted)}
+.card .score{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);
+             font-variant-numeric:tabular-nums;flex:0 0 auto}
+.card h3{margin:0;font-size:14.5px;line-height:1.35;font-weight:600;
+         display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card p{margin:0;font-size:12.5px;line-height:1.5;color:var(--muted);
+        display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;
+            margin-top:auto;padding-top:9px;font-size:11.5px;color:var(--muted)}
+.card .by{font-family:var(--mono);font-weight:600}
+.card .tags{display:flex;gap:5px;flex-wrap:wrap;overflow:hidden;max-height:18px}
+.card .tags i{font-style:normal;font-family:var(--cond);font-size:9.5px;letter-spacing:.1em;
+   text-transform:uppercase;border:1px solid var(--rule);padding:1px 5px;color:var(--muted)}
+.card .tick{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:50%;
+   border:1px solid var(--rule);background:var(--panel);color:var(--muted);font-size:12px;
+   line-height:20px;text-align:center;cursor:pointer;opacity:0;transition:opacity .12s}
+.card:hover .tick,.card.read .tick{opacity:1}
+.card .tick:hover{border-color:var(--ink);color:var(--ink)}
+.rd-empty{color:var(--muted);font-size:13px;padding:30px 0}
+
+/* ---- upsolve ---- */
+#up-wrap{margin-top:38px;padding-top:26px;border-top:1px solid var(--rule)}
+#up-msg{margin-left:14px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+#up-lede{margin:18px 0 14px}
+#up-tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.tg{display:flex;align-items:baseline;gap:7px;border:1px solid var(--rule);
+    background:var(--panel);padding:4px 10px;font-size:12px}
+.tg b{font-family:var(--mono);font-weight:600}
+.tg span{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+         color:var(--muted)}
+#up-table td.bar{width:150px}
+/* Tags and difficulty give the approach away, so they start concealed. A faint bar reads as
+   a rendering artefact, so the concealed state is a labelled chip that says what is under it. */
+.spoiler{cursor:pointer;user-select:none}
+.spoiler .peek{display:inline-flex;align-items:center;gap:5px;font-style:normal;
+               font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+               color:var(--muted);background:var(--panel);border:1px dashed var(--rule);
+               border-radius:2px;padding:2px 8px;transition:border-color .12s,color .12s}
+.spoiler .peek::before{content:"";width:9px;height:9px;flex:0 0 9px;
+  background:var(--muted);
+  -webkit-mask:radial-gradient(circle at 50% 50%,#000 2.2px,transparent 2.3px) center/100% 100% no-repeat;
+  mask:radial-gradient(circle at 50% 50%,#000 2.2px,transparent 2.3px) center/100% 100% no-repeat;
+  box-shadow:none;border:1.2px solid var(--muted);border-radius:50% 50%}
+.spoiler:hover .peek{border-color:var(--ink);color:var(--ink)}
+.spoiler:hover .peek::before{background:var(--ink);border-color:var(--ink)}
+.spoiler:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.spoiler .real{display:none}
+.spoiler.on{cursor:auto;user-select:auto}
+.spoiler.on .peek{display:none}
+.spoiler.on .real{display:inline}
+.reveals{display:flex;gap:8px;margin-bottom:16px}
+.spoiler.on .real{font-style:italic}
+.reveals button{background:var(--panel);color:var(--muted);border:1px solid var(--rule);
+                padding:6px 12px;font-size:11px}
+.reveals button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tried{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+       color:#c02a1d}
+.meter{position:relative;height:7px;background:var(--rule-soft);border-radius:1px}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--ink);border-radius:1px}
+#msg{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:16px 0;min-height:20px}
+.alt{margin-top:26px;padding:13px 16px;border-left:3px solid var(--ink);background:var(--panel);
+     font-size:13px;line-height:1.6;max-width:78ch}
+.alt b{font-weight:600}
+.foot{margin-top:22px;font-size:12px;line-height:1.65;color:var(--muted);max-width:70ch}
+.foot b{color:var(--ink-2);font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="rail">
+    <div class="mark"><b>vrating</b></div>
+    <div class="tag">the rating you'd have if your virtual rounds had counted</div>
+    <div class="tabs" role="tablist">
+      <button type="button" id="tab-cf" class="on" role="tab" aria-selected="true">Codeforces</button>
+      <button type="button" id="tab-ac" role="tab" aria-selected="false">AtCoder</button>
+      <button type="button" id="tab-rd" role="tab" aria-selected="false">Reading</button>
+    </div>
+    <form id="f">
+      <input id="h" placeholder="handle — or several, comma separated" autocomplete="off" spellcheck="false" autocapitalize="off">
+      <button id="go">Replay</button>
+    </form>
+  </div>
+
+  <div class="modes" id="modes">
+    <button type="button" data-mode="virtual" class="on">Virtual rounds only</button>
+    <button type="button" data-mode="merged">Alongside my real contests</button>
+  </div>
+
+  <div id="msg">Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.</div>
+
+  <div id="rd-panel" hidden>
+    <div class="rd-bar">
+      <input id="rd-q" placeholder="search titles, authors, tags" autocomplete="off">
+      <div class="rd-sort">
+        <button type="button" data-sort="score" class="on">Most upvoted</button>
+        <button type="button" data-sort="new">Newest</button>
+        <button type="button" data-sort="list">List order</button>
+      </div>
+      <label class="rd-hide"><input type="checkbox" id="rd-unread"> hide read</label>
+      <button type="button" id="rd-refresh" title="re-read the list from GitHub; already-fetched posts are kept">Refresh list</button>
+    </div>
+    <div id="rd-topics" class="rd-topics"></div>
+    <div id="rd-grid" class="rd-grid"></div>
+    <p class="ac-note" id="rd-foot"></p>
+  </div>
+
+  <div id="ac-panel" hidden>
+    <p class="ac-note">AtCoder keeps standings behind a login, so it can't read your placing.
+      These are the rounds you've solved problems from after they finished — fill in the rank
+      you got and they'll be replayed in the order you sat them.</p>
+    <div id="ac-list"></div>
+    <div class="ac-actions">
+      <button type="button" id="ac-est">Estimate ranks for me</button>
+      <button type="button" id="ac-go">Replay these rounds</button>
+    </div>
+  </div>
+
+  <div id="out" hidden>
+    <div class="readout">
+      <div class="cell"><div class="k">Virtual rating</div><div class="v" id="v-rating">—</div></div>
+      <div class="cell"><div class="k">vs real</div><div class="v" id="v-div">—</div></div>
+      <div class="cell"><div class="k">Peak</div><div class="v" id="v-peak">—</div></div>
+      <div class="cell"><div class="k">Rounds replayed</div><div class="v" id="v-n">—</div></div>
+    </div>
+
+    <div class="plot">
+      <div class="legend">
+        <span class="v"><i></i><b>solid</b>&nbsp;— the rating these rounds would have given you</span>
+        <span class="r"><i></i><b>dashed</b>&nbsp;— <span id="lg-real">your real rating</span> on the day you sat each one</span>
+      </div>
+      <svg id="chart" viewBox="0 0 1080 380" role="img"
+           aria-label="Virtual rating by round, against real rating at the time. The table below lists every round."></svg>
+      <div id="tip" hidden></div>
+    </div>
+
+    <p class="alt" id="alt" hidden></p>
+
+    <table>
+      <thead><tr>
+        <th class="l">Round</th><th>Rank</th><th>Perf</th><th>Before</th><th>Δ</th><th>After</th><th>±</th>
+      </tr></thead>
+      <tbody id="log"></tbody>
+    </table>
+
+    <div class="foot" id="foot"></div>
+
+    <div id="up-wrap">
+      <button type="button" id="up-go">What should I upsolve?</button>
+      <span id="up-msg"></span>
+      <div id="up-out" hidden>
+        <p class="ac-note" id="up-lede"></p>
+        <div class="reveals">
+          <button type="button" id="rv-tags" aria-pressed="false">Reveal tags</button>
+          <button type="button" id="rv-diff" aria-pressed="false">Reveal difficulty</button>
+        </div>
+        <div id="up-tags"></div>
+        <table id="up-table"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Codeforces rank ladder. Upper bound exclusive. The only hue in the design.
+const BANDS=[[-999,1200,"#b9bec6"],[1200,1400,"#71d16a"],[1400,1600,"#63cbb0"],
+             [1600,1900,"#8f9ff0"],[1900,2100,"#e07ce0"],[2100,2400,"#f0b45c"],
+             [2400,2600,"#ef6b64"],[2600,3000,"#e03a32"],[3000,5000,"#a4110a"]];
+const band=r=>(BANDS.find(b=>r>=b[0]&&r<b[1])||BANDS[0])[2];
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+
+let entries=[], real=[], expected=0, manyAccounts=false, lastUsers=null, lastNames=null;
+let lastGone=[];   // handles that no longer resolve; reported, never silently dropped
+let configured={cf:[],ac:[]};   // VRATING_HANDLES / VRATING_AC_HANDLES, from the server
+let alternates={}, actualFinal=null;
+let mergeReal=false;   // false: only virtual rounds. true: interleaved with real ones.
+document.querySelectorAll("#modes button").forEach(b=>{
+  b.onclick=()=>{
+    mergeReal=b.dataset.mode==="merged";
+    document.querySelectorAll("#modes button").forEach(x=>x.classList.toggle("on",x===b));
+    const h=$("h").value.trim(); if(h&&platform==="cf")run(h);
+  };
+});
+
+function el(tag,attrs,parent){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);
+  (parent||$("chart")).appendChild(e);
+  return e;
+}
+
+// Codeforces rank titles, so a rating reads as the thing competitors actually say.
+const TITLES=[[-999,1200,"newbie"],[1200,1400,"pupil"],[1400,1600,"specialist"],
+              [1600,1900,"expert"],[1900,2100,"candidate master"],[2100,2300,"master"],
+              [2300,2400,"international master"],[2400,2600,"grandmaster"],
+              [2600,3000,"international grandmaster"],[3000,5000,"legendary grandmaster"]];
+const title=r=>(TITLES.find(t=>r>=t[0]&&r<t[1])||TITLES[0])[2];
+
+const CF="https://codeforces.com";
+const AC="https://atcoder.jp";
+let platform="cf";
+const contestUrl=e=>platform==="ac"?`${AC}/contests/${e.contest_id}`:`${CF}/contest/${e.contest_id}`;
+const standingsUrl=e=>platform==="ac"?`${AC}/contests/${e.contest_id}/standings`
+                                     :`${CF}/contest/${e.contest_id}/standings`;
+let hideTimer=null, currentHandle="";
+
+function showTip(ev,e,ghostRating){
+  clearTimeout(hideTimer);
+  const t=$("tip");
+  const when=new Date(e.start*1000).toLocaleDateString(undefined,
+    {year:"numeric",month:"short",day:"numeric"});
+  t.innerHTML=
+    `<span class="r" style="color:${band(e.new_rating)}">= ${e.new_rating}</span> `+
+    `<span class="r" style="color:${e.delta>=0?"#12833b":"#c02a1d"}">`+
+    `(${e.delta>=0?"+":""}${e.delta})</span>, <span class="title">${title(e.new_rating)}</span>`+
+    `<a class="name" href="${contestUrl(e)}" target="_blank" rel="noopener">${e.name}</a>`+
+    `<div class="meta">Rank <span>${e.rank}</span> of <span>${e.field_size}</span> · `+
+    `performance <span>${e.performance}</span></div>`+
+    (()=>{const alt=alternates[e.contest_id];
+      if(alt==null||actualFinal==null)return "";
+      const d=alt-actualFinal;
+      return `<div class="meta">Skip this round and you would sit at <span>${alt}</span> today `+
+             `(<span>${d>=0?"+":""}${d}</span>)</div>`;})()+
+    `<div class="meta">${when}${manyAccounts?" · sat on "+e.handle:""}`+
+    (ghostRating==null?"":` · real rating then <span>${ghostRating}</span>`)+`</div>`+
+    // only URL shapes verified against Codeforces' own documented forms.
+    // The round's own account, not the primary one: on several accounts they differ, and
+    // the card has just said which one sat it.
+    (mine=>`<div class="links">`+
+      `<a href="${standingsUrl(e)}" target="_blank" rel="noopener">Standings</a>`+
+      (platform==="cf"
+        ? `<a href="${CF}/contest/${e.contest_id}/status" target="_blank" rel="noopener">All submissions</a>`+
+          `<a href="${CF}/submissions/${encodeURIComponent(mine)}" target="_blank" rel="noopener">Yours</a>`
+        : `<a href="${AC}/contests/${e.contest_id}/submissions?f.User=${encodeURIComponent(mine)}" target="_blank" rel="noopener">Your submissions</a>`)+
+    `</div>`)(e.handle||currentHandle);
+  t.hidden=false;
+  const pad=14, w=t.offsetWidth, h=t.offsetHeight;
+  let x=ev.clientX+pad, y=ev.clientY-h-pad;
+  if(x+w>innerWidth-8) x=ev.clientX-w-pad;
+  if(y<8) y=ev.clientY+pad;
+  t.style.left=x+"px"; t.style.top=y+"px";
+}
+
+// The card holds links, so it has to survive the trip from the dot to the card.
+const hideTip=()=>{clearTimeout(hideTimer);$("tip").hidden=true;};
+const hideTipSoon=()=>{clearTimeout(hideTimer);hideTimer=setTimeout(hideTip,320);};
+$("tip").addEventListener("mouseenter",()=>clearTimeout(hideTimer));
+$("tip").addEventListener("mouseleave",hideTip);
+
+/** Real rating as it stood when a virtual round was sat. Step function, not interpolated. */
+function realAt(t){
+  let r=null;
+  for(const p of real){ if(p.t<=t) r=p.rating; else break; }
+  return r;
+}
+
+function draw(){
+  hideTip();
+  const svg=$("chart"); svg.innerHTML="";
+  const rated=entries.filter(e=>e.rated);
+  if(!rated.length)return;
+
+  const W=1080,H=380,ML=52,MR=94,MT=18,MB=30;   // right margin holds the inline line labels
+  const iw=W-ML-MR, ih=H-MT-MB;
+
+  // x is round sequence, not wall-clock: virtual rounds are sat in bursts, and a real time
+  // axis collapses a whole career into one corner of the plot.
+  const n=rated.length;
+  const X=i=>ML+(n===1?iw/2:(i/(n-1))*iw);
+
+  const ghost=rated.map(e=>realAt(e.start));
+  // range off plotted values only; a first round starting from 0 would otherwise
+  // strand two thirds of the plot in empty grey
+  const all=[...rated.map(e=>e.new_rating),...ghost.filter(v=>v!=null)];
+  const lo=Math.min(...all), hi=Math.max(...all);
+  const pad=Math.max(90,(hi-lo)*.18);
+  const y0=lo-pad, y1=hi+pad;
+  const Y=r=>MT+ih-((r-y0)/(y1-y0))*ih;
+
+  // rank bands — the page's only colour, held back so the ink line reads first
+  for(const[b0,b1,c] of BANDS){
+    const top=Math.max(Y(Math.min(b1,y1)),MT), bot=Math.min(Y(Math.max(b0,y0)),MT+ih);
+    if(bot-top>.5)el("rect",{x:ML,y:top,width:iw,height:bot-top,fill:c,opacity:.30});
+  }
+
+  const step=(y1-y0)>1800?400:(y1-y0)>800?200:100;
+  for(let r=Math.ceil(y0/step)*step;r<y1;r+=step){
+    el("line",{x1:ML,y1:Y(r),x2:ML+iw,y2:Y(r),stroke:"currentColor",opacity:.12});
+    const t=el("text",{x:ML-10,y:Y(r)+4,"text-anchor":"end","font-size":11,
+      fill:"currentColor",opacity:.55,"font-family":"var(--mono)"});
+    t.textContent=r;
+  }
+  // x ticks: first, last, and year changes — but never close enough to collide
+  const seen=new Set(); let lastX=-1e9;
+  rated.forEach((e,i)=>{
+    const d=new Date(e.start*1000), y=d.getFullYear();
+    const wanted=(i===0||i===n-1||!seen.has(y));
+    seen.add(y);
+    if(!wanted) return;
+    const x=X(i);
+    if(i!==n-1&&x-lastX<70) return;
+    if(i===n-1&&x-lastX<70) return;
+    lastX=x;
+    const t=el("text",{x,y:H-9,"text-anchor":i===0?"start":i===n-1?"end":"middle",
+      "font-size":10.5,fill:"currentColor",opacity:.55,"font-family":"var(--mono)"});
+    t.textContent=d.toISOString().slice(0,7);
+  });
+  el("rect",{x:ML,y:MT,width:iw,height:ih,fill:"none",stroke:"currentColor",opacity:.22});
+
+  // the real career, sampled at the same moments — the comparison this page exists to make
+  const gpts=ghost.map((v,i)=>v==null?null:`${X(i)},${Y(v)}`).filter(Boolean);
+  if(gpts.length>1){
+    el("polyline",{points:gpts.join(" "),fill:"none",stroke:"var(--ghost)",
+      "stroke-width":1.5,"stroke-dasharray":"5 4","stroke-linejoin":"round"});
+  }
+
+  // virtual career, in ink, drawn as the pen travels
+  const line=el("polyline",{points:rated.map((e,i)=>`${X(i)},${Y(e.new_rating)}`).join(" "),
+    fill:"none",stroke:"var(--ink)","stroke-width":2,"stroke-linejoin":"round",
+    "stroke-linecap":"round"});
+  const len=line.getTotalLength?line.getTotalLength():0;
+  if(len&&!matchMedia("(prefers-reduced-motion:reduce)").matches){
+    line.setAttribute("stroke-dasharray",len);
+    line.setAttribute("stroke-dashoffset",len);
+    line.animate([{strokeDashoffset:len},{strokeDashoffset:0}],
+      {duration:Math.min(900,160*rated.length),easing:"cubic-bezier(.3,.8,.4,1)",fill:"forwards"});
+  }
+  rated.forEach((e,i)=>{
+    el("circle",{cx:X(i),cy:Y(e.new_rating),r:4,fill:band(e.new_rating),
+      stroke:"var(--ink)","stroke-width":1.5});
+    // generous invisible hit area — a 4px dot is a hard target
+    const hit=el("circle",{cx:X(i),cy:Y(e.new_rating),r:13,fill:"transparent",
+      style:"cursor:pointer"});
+    hit.addEventListener("mousemove",ev=>showTip(ev,e,ghost[i]));
+    hit.addEventListener("mouseleave",hideTipSoon);
+  });
+
+  // Name each line where it ends, so the reader never has to match a swatch to a stroke.
+  const lastGhost=[...ghost].reverse().find(v=>v!=null);
+  const labels=[{y:Y(rated[rated.length-1].new_rating),text:"virtual",
+                 fill:"var(--ink)",weight:600}];
+  if(lastGhost!=null)labels.push({y:Y(lastGhost),text:"real",fill:"var(--ghost)",weight:500});
+  if(labels.length===2&&Math.abs(labels[0].y-labels[1].y)<14){
+    const push=(14-Math.abs(labels[0].y-labels[1].y))/2;
+    const up=labels[0].y<labels[1].y?-1:1;
+    labels[0].y+=up*push; labels[1].y-=up*push;
+  }
+  for(const l of labels){
+    el("line",{x1:ML+iw+4,y1:l.y,x2:ML+iw+16,y2:l.y,stroke:l.fill,"stroke-width":2,
+      ...(l.text==="real"?{"stroke-dasharray":"5 4"}:{})});
+    const t=el("text",{x:ML+iw+21,y:l.y+4,"font-size":12,fill:l.fill,
+      "font-family":"var(--cond)","font-weight":l.weight,"letter-spacing":".08em"});
+    t.textContent=l.text;
+  }
+}
+
+function row(e){
+  const tr=document.createElement("tr");
+  const d=new Date(e.start*1000).toISOString().slice(0,10);
+  tr.innerHTML=
+    `<td class="l"><a href="${contestUrl(e)}" target="_blank" rel="noopener">${e.name}</a>`+
+     `<br><span class="cf">${d}${manyAccounts?" · "+e.handle:""}</span>`+
+     (e.unsolved&&e.unsolved.length?`<div class="todo"><span>upsolve</span>${
+        e.unsolved.map(p=>`<a href="${CF}/contest/${e.contest_id}/problem/${p}" target="_blank" rel="noopener"${
+          e.attempted.includes(p)?' class="tried" title="you submitted but did not solve it"':''}>${p}</a>`).join("")
+      }</div>`:"")+
+     `</td>`+
+    `<td>${e.rank}<span style="opacity:.45">/${e.field_size}</span></td>`+
+    `<td>${e.rated?e.performance:"—"}</td>`+
+    `<td>${e.rated?e.old_rating:"—"}</td>`+
+    `<td class="${!e.rated?"":e.delta>=0?"up":"down"}">${e.rated?(e.delta>=0?"+":"")+e.delta:"unrated"}</td>`+
+    `<td>${e.rated?`<span class="chip" style="background:${band(e.new_rating)}"></span> <b>${e.new_rating}</b>`:"—"}</td>`+
+    `<td class="cf ${e.confidence}">${{exact:"±1",corrected:"±3",approximate:"±10",unrated:"—"}[e.confidence]}</td>`;
+  $("log").prepend(tr);
+}
+
+function stats(s){
+  $("v-rating").textContent=s.rating;
+  $("v-rating").style.color=band(s.rating);
+  $("v-peak").textContent=s.peak;
+  $("v-n").textContent=s.contests;
+  const d=s.divergence;
+  $("v-div").innerHTML=d==null?'—<small> no real rating</small>'
+    :`${d>=0?"+":""}${d}<small> vs ${s.real_rating}</small>`;
+  $("v-div").className="v "+(d>=0?"up":"down");
+}
+
+/** Split a typed list on commas or whitespace, dropping repeats but keeping order. */
+function splitHandles(text){
+  const seen=new Set(), out=[];
+  for(const h of text.replace(/,/g," ").split(/\s+/).filter(Boolean)){
+    if(seen.has(h.toLowerCase()))continue;
+    seen.add(h.toLowerCase());out.push(h);
+  }
+  return out;
+}
+
+/** One account, however many names reach it. Codeforces answers to an old handle forever,
+ *  so two entries in the box can be the same person -- and without this they are fetched,
+ *  scored and labelled twice. Only the handle the account's own submissions carry says so. */
+function dedupeUsers(users){
+  const seen=new Map();
+  for(const u of users)if(!seen.has(u.handle.toLowerCase()))seen.set(u.handle.toLowerCase(),u);
+  return [...seen.values()];
+}
+
+/** The account is gone: deleted, or asked for by a name it no longer uses. The only
+ *  permanent failure, and the only one it is safe to carry on without. */
+class HandleGone extends Error{
+  constructor(handle,why){ super(`${handle}: ${why}`); this.handle=handle; }
+}
+
+const CF_API="https://codeforces.com/api/";
+const GONE=/not found|no such user/i;
+const TRANSIENT=/call limit exceeded|service unavailable|temporarily/i;
+
+/** One Codeforces call, retried through the failures that pass on their own.
+ *
+ *  Codeforces answers a burst of requests with a 503 or "Call limit exceeded" — six accounts
+ *  fired at once is twelve requests and reliably loses some. Those come back on a retry; a
+ *  deleted handle never will. Telling the two apart is the whole point: a dropped account
+ *  silently shortens the career and the page reports the result as if it were complete. */
+async function cfApi(method,handle,tries=4){
+  let last="";
+  for(let i=0;i<tries;i++){
+    if(i)await new Promise(r=>setTimeout(r,500*(1<<i)));      // 1s, 2s, 4s
+    let res,d;
+    try{ res=await fetch(CF_API+method+"?handle="+encodeURIComponent(handle)); }
+    catch(err){ last=err.message||"network error"; continue; }
+    try{ d=await res.json(); }catch(err){ last="unreadable response"; continue; }
+    if(d.status==="OK")return d.result||[];
+    last=d.comment||`HTTP ${res.status}`;
+    if(GONE.test(last))throw new HandleGone(handle,last);
+    if(!TRANSIENT.test(last)&&res.status<500)throw new Error(`${handle}: ${last}`);
+  }
+  throw new Error(`${handle}: ${last} (after ${tries} attempts)`);
+}
+
+/** Fetch every account, a couple at a time.
+ *
+ *  Concurrency is deliberately small: firing every account at once is what provokes the 503s
+ *  above. Two in flight — four requests — gets through without needing the retries.
+ *  Returns [users, gone]; anything that is not a missing account throws, because replaying
+ *  five of six accounts and calling it your career is a wrong answer, not a partial one. */
+async function loadUsers(names){
+  const slots=new Array(names.length).fill(null), gone=[];
+  let next=0;
+  async function worker(){
+    for(let i;(i=next++)<names.length;){
+      try{ slots[i]=await cfUser(names[i]); }
+      catch(err){
+        if(!(err instanceof HandleGone))throw err;
+        gone.push(names[i]);
+      }
+    }
+  }
+  await Promise.all([worker(),worker()]);
+  const users=dedupeUsers(slots.filter(Boolean));
+  if(!users.length)throw new Error("no account could be read"+(gone.length?": "+gone.join(", "):""));
+  return [users,gone];
+}
+
+/** Pull one account's data straight from Codeforces. CORS is open on these endpoints, so
+ *  this runs against the visitor's own rate-limit budget rather than the server's shared one. */
+async function cfUser(handle){
+  const [all,rat]=await Promise.all([
+    cfApi("user.status",handle),
+    cfApi("user.rating",handle),
+  ]);
+  // The account's own submissions are stamped with its *current* handle, which is how a
+  // renamed account gives itself away. Nothing to go on if it has never submitted.
+  const named=all.find(s=>s.author&&s.author.members&&s.author.members[0]);
+  const canonical=named?named.author.members[0].handle:handle;
+  // Send only the fields the scorer reads. Geothermal's raw virtual submissions are ~960 KB;
+  // trimmed they are a fraction of that, and nothing downstream looks at the rest.
+  const subs=all.filter(s=>s.author&&s.author.participantType==="VIRTUAL").map(s=>({
+    contestId:s.contestId,
+    problem:{index:s.problem.index},
+    verdict:s.verdict,
+    passedTestCount:s.passedTestCount,
+    relativeTimeSeconds:s.relativeTimeSeconds,
+    author:{participantType:"VIRTUAL",startTimeSeconds:s.author.startTimeSeconds},
+  }));
+  // Everything the upsolve scan needs, extracted once so it never refetches:
+  // what you have solved anywhere, which rounds you sat for real, and the rating you held.
+  const solved=[...new Set(all.filter(s=>s.verdict==="OK")
+      .map(s=>s.contestId+"\u0000"+s.problem.index))].map(k=>{
+        const [c,i]=k.split("\u0000"); return [Number(c),i];});
+  const real=[...new Set(all.filter(s=>s.author&&s.author.participantType==="CONTESTANT")
+      .map(s=>s.contestId))];
+  const ratings=Object.fromEntries(rat.map(h=>[h.contestId,h.oldRating]));
+  return {handle:canonical, typed:handle, subs, rating:rat, solved, real, ratings};
+}
+
+/** Read an SSE-formatted body off a streaming fetch. EventSource cannot POST. */
+async function streamEvents(res, on){
+  const reader=res.body.getReader(), dec=new TextDecoder();
+  let buf="";
+  for(;;){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let i;
+    while((i=buf.indexOf("\n\n"))>=0){
+      const block=buf.slice(0,i); buf=buf.slice(i+2);
+      const name=(block.match(/^event: (.*)$/m)||[])[1];
+      const data=(block.match(/^data: (.*)$/m)||[])[1];
+      if(name&&data)on(name,JSON.parse(data));
+    }
+  }
+}
+
+async function run(handle){
+  entries=[];real=[];expected=0;
+  $("log").innerHTML="";$("out").hidden=true;$("go").disabled=true;
+  $("msg").textContent="Reading your Codeforces history…";
+  try{
+    const names=splitHandles(handle);
+    // Switching framing re-runs this with the same accounts; their Codeforces data has not
+    // changed, and refetching it is a dozen requests the API would rather not have.
+    const reuse=lastUsers&&lastNames&&lastNames.length===names.length&&
+                lastNames.every((n,i)=>n===names[i]);
+    const [users,gone]=reuse?[lastUsers,lastGone]:await loadUsers(names);
+    lastUsers=users;lastNames=names;lastGone=gone;
+    const primary=users.reduce((a,b)=>b.rating.length>a.rating.length?b:a,users[0]);
+    const payload={
+      handles:users.map(u=>u.handle),
+      submissions:Object.fromEntries(users.map(u=>[u.handle,u.subs])),
+      real:primary.rating.map(h=>({t:h.ratingUpdateTimeSeconds,rating:h.newRating})),
+      real_handle:primary.handle,
+      merged:mergeReal,
+    };
+    const res=await fetch("/api/stream",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(!res.ok||!res.body)throw new Error("server refused the replay");
+
+    await streamEvents(res,(name,d)=>{
+      if(name==="meta"){
+        real=d.real||[];expected=d.total;currentHandle=d.real_handle||d.handle;
+        manyAccounts=(d.handles||[]).length>1;
+        $("lg-real").textContent=manyAccounts?`${d.real_handle}'s real rating`:"your real rating";
+        if(!expected){
+          $("msg").textContent=`No virtual rounds found for ${d.handle}. Sit one on Codeforces, then replay.`;
+          return;
+        }
+        $("msg").textContent=`Replaying ${expected} rounds…`;$("out").hidden=false;
+      } else if(name==="entry"){
+        entries.push(d);row(d);draw();
+        $("msg").textContent=`Replaying ${entries.length} of ${expected}…`;
+      } else if(name==="failed"){
+        throw new Error(d.error);
+      } else if(name==="alternates"){
+        alternates=d.alternates||{};actualFinal=d.actual_final??null;
+        showAlternates();
+      } else if(name==="done"){
+        stats(d);draw();
+        const skipped=expected-entries.length, unrated=entries.length-d.contests;
+        const notes=[];
+        if(lastGone.length)notes.push(`no such account: ${lastGone.join(", ")} — left out`);
+        if(skipped)notes.push(`${skipped} gym or unrated round${skipped>1?"s":""} skipped — Codeforces never rated them`);
+        if(unrated)notes.push(`${unrated} round${unrated>1?"s":""} you'd have been ineligible for at the time`);
+        $("msg").textContent=notes.join(" · ");
+        $("foot").innerHTML=
+          `Each round is scored against the field that actually sat it, using every rated `+
+          `participant's rating and the round's own published rating changes as calibration. `+
+          `Typical error is <b>±1</b>, rising to about <b>±6</b> in fields dominated by brand-new `+
+          `accounts. Errors carry forward, so trust the shape of the curve more than any `+
+          `single number.`;
+      }
+    });
+  }catch(err){ $("msg").textContent="Error: "+err.message; }
+  finally{ $("go").disabled=false; }
+}
+
+/** "What if I'd skipped that round?" — the counterfactual for every round at once. */
+function showAlternates(){
+  if(actualFinal==null)return;
+  const costs=Object.entries(alternates)
+    .map(([cid,fin])=>({cid,gain:fin-actualFinal}))
+    .filter(x=>Number.isFinite(x.gain)).sort((a,b)=>b.gain-a.gain);
+  if(!costs.length)return;
+  const worst=costs[0];
+  const name=(entries.find(e=>String(e.contest_id)===worst.cid)||{}).name||worst.cid;
+  $("alt").innerHTML=`Your worst round was <b>${name}</b>. Skipping it entirely would leave you `+
+    `<b>${worst.gain>0?"+":""}${Math.round(worst.gain)}</b> today — after enough rounds even a `+
+    `disaster washes out. <a href="https://codeforces.com/blog/entry/79415" target="_blank" `+
+    `rel="noopener">galen_colin argued this</a> from one contest by hand; hover any round for its own number.`;
+  $("alt").hidden=false;
+}
+
+// ---------- reading shelf ----------
+let shelf=[], authors={}, rdTopic=null, rdSort="score", rdLoaded=false;
+const READ_KEY="vrating.read";
+const readSet=()=>new Set(JSON.parse(localStorage.getItem(READ_KEY)||"[]"));
+const setRead=(url,on)=>{const s=readSet();on?s.add(url):s.delete(url);
+  localStorage.setItem(READ_KEY,JSON.stringify([...s]));};
+
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function rdCards(){
+  const q=$("rd-q").value.trim().toLowerCase();
+  const hideRead=$("rd-unread").checked;
+  const read=readSet();
+  let list=shelf.filter(b=>{
+    if(rdTopic&&b.topic!==rdTopic)return false;
+    if(hideRead&&read.has(b.url))return false;
+    if(!q)return true;
+    return [b.title,b.label,b.author,(b.tags||[]).join(" "),b.topic]
+      .filter(Boolean).join(" ").toLowerCase().includes(q);
+  });
+  if(rdSort==="score")list=[...list].sort((a,b)=>(b.score??-1)-(a.score??-1));
+  if(rdSort==="new")list=[...list].sort((a,b)=>(b.created??0)-(a.created??0));
+
+  $("rd-grid").innerHTML=list.length?list.map(b=>{
+    const isRead=read.has(b.url);
+    const when=b.created?new Date(b.created*1000).getFullYear():"";
+    const who=b.author
+      ? `<span class="by" style="color:${band(authors[b.author]??0)}">${esc(b.author)}</span>`
+      : `<span class="by">${esc(b.host)}</span>`;
+    return `<a class="card${isRead?" read":""}" href="${esc(b.url)}" target="_blank"
+       rel="noopener" data-url="${esc(b.url)}">
+      <span class="tick" title="${isRead?"mark unread":"mark read"}">${isRead?"✓":"+"}</span>
+      <div class="eyebrow"><span>${esc(b.topic)}</span>
+        ${b.score!=null?`<span class="score">${b.score>0?"+":""}${b.score}</span>`:""}</div>
+      <h3>${esc(b.title||b.label)}</h3>
+      ${b.excerpt?`<p>${esc(b.excerpt)}</p>`:`<p>${esc(b.host)}</p>`}
+      <div class="foot">${who}
+        <span class="tags">${(b.tags||[]).slice(0,3).map(t=>`<i>${esc(t)}</i>`).join("")}
+        ${when?`<i>${when}</i>`:""}</span></div>
+    </a>`;}).join("")
+    : `<div class="rd-empty">Nothing matches.</div>`;
+
+  // the tick toggles read without following the link
+  $("rd-grid").querySelectorAll(".tick").forEach(el=>{
+    el.onclick=ev=>{ev.preventDefault();ev.stopPropagation();
+      const card=el.closest(".card"), url=card.dataset.url;
+      setRead(url,!readSet().has(url)); rdCards();};
+  });
+  const n=list.length, total=shelf.length, done=shelf.filter(b=>read.has(b.url)).length;
+  $("rd-foot").innerHTML=`Showing <b>${n}</b> of ${total} · ${done} marked read · `+
+    `scores are Codeforces' own community votes · `+
+    `<a href="https://github.com/TAOGenna/competitive-programming/tree/master/Interesting_blogs" target="_blank" rel="noopener">source list</a>`;
+}
+
+function rdTopics(topics){
+  const all=`<button class="${rdTopic?"":"on"}" data-t="">Everything <b>${shelf.length}</b></button>`;
+  $("rd-topics").innerHTML=all+topics.map(t=>
+    `<button class="${rdTopic===t.topic?"on":""}" data-t="${esc(t.topic)}">${esc(t.topic)} <b>${t.count}</b></button>`).join("");
+  $("rd-topics").querySelectorAll("button").forEach(b=>{
+    b.onclick=()=>{rdTopic=b.dataset.t||null;rdTopics(topics);rdCards();};
+  });
+}
+
+async function rdLoad(refresh){
+  if(rdLoaded&&!refresh)return;
+  $("rd-refresh").disabled=true;
+  $("rd-foot").textContent=refresh?"Re-reading the list from GitHub…":"Fetching the reading list…";
+  const res=await fetch("/api/blogs"+(refresh?"?refresh=1":""));
+  await streamEvents(res,(name,d)=>{
+    if(name==="progress"){
+      $("rd-foot").textContent=`Reading Codeforces metadata ${d.done}/${d.total}… (first run only)`;
+    } else if(name==="failed"){
+      $("rd-foot").textContent="Could not load the list: "+d.error;
+    } else if(name==="done"){
+      shelf=d.items;authors=d.authors||{};rdLoaded=true;
+      rdTopics(d.topics);rdCards();
+    }
+  });
+  $("rd-refresh").disabled=false;
+}
+$("rd-refresh").addEventListener("click",()=>rdLoad(true));
+$("rd-q").addEventListener("input",rdCards);
+$("rd-unread").addEventListener("change",rdCards);
+document.querySelectorAll(".rd-sort button").forEach(b=>{
+  b.onclick=()=>{rdSort=b.dataset.sort;
+    document.querySelectorAll(".rd-sort button").forEach(x=>x.classList.toggle("on",x===b));
+    rdCards();};
+});
+
+// ---------- AtCoder ----------
+// `currentHandle` is the account whose real rating is drawn; `acHandles` is every account the
+// career is built from. They are the same until you replay more than one.
+let acSittings=[], acHandles=[];
+
+function setPlatform(p){
+  platform=p;
+  for(const [id,key] of [["tab-cf","cf"],["tab-ac","ac"],["tab-rd","rd"]]){
+    $(id).classList.toggle("on",p===key);
+    $(id).setAttribute("aria-selected",p===key);
+  }
+  const reading=p==="rd";
+  $("f").hidden=reading;
+  $("modes").hidden=(p!=="cf");
+  $("rd-panel").hidden=!reading;
+  $("ac-panel").hidden=true;$("out").hidden=true;$("ac-list").innerHTML="";
+  if(reading){ $("msg").textContent=""; rdLoad(); return; }
+  $("h").placeholder="handle — or several, comma separated";
+  $("go").textContent=p==="ac"?"Find rounds":"Replay";
+  $("msg").textContent=p==="ac"
+    ? "Enter your AtCoder handle — or several — to find the rounds you've sat outside the live window."
+    : "Enter a handle. Every virtual round you've sat is replayed in order, each one scored against the rating the one before it left you on.";
+  // The two platforms are separate namespaces, so swap the box over to this one's configured
+  // accounts -- but never over something typed by hand.
+  const mine=(p==="ac"?configured.ac:configured.cf).join(", ");
+  const other=(p==="ac"?configured.cf:configured.ac).join(", ");
+  const box=$("h").value.trim();
+  if(mine&&(box===""||box===other))$("h").value=mine;
+}
+$("tab-cf").addEventListener("click",()=>setPlatform("cf"));
+$("tab-ac").addEventListener("click",()=>setPlatform("ac"));
+$("tab-rd").addEventListener("click",()=>setPlatform("rd"));
+
+async function acFind(handle){
+  $("go").disabled=true;$("msg").textContent="Reading your submission history…";
+  try{
+    const d=await (await fetch("/api/ac/candidates?handle="+encodeURIComponent(handle))).json();
+    if(d.error)throw new Error(d.error);
+    real=d.real||[];acSittings=d.sittings||[];
+    acHandles=d.handles||splitHandles(handle);
+    currentHandle=d.real_handle||handle;
+    manyAccounts=acHandles.length>1;
+    $("lg-real").textContent=manyAccounts?`${currentHandle}'s real rating`:"your real rating";
+    if(!acSittings.length){
+      $("msg").textContent=`No rounds found for ${d.handle||handle} outside their live window.`;return;
+    }
+    $("ac-list").innerHTML=acSittings.map((s,i)=>{
+      const when=new Date(s.sat_at*1000).toISOString().slice(0,10);
+      return `<label class="ac-row"><span class="n" title="${s.name}">`+
+        `<a href="${AC}/contests/${s.contest_id}" target="_blank" rel="noopener">${s.contest_id}</a>`+
+        ` ${s.name}${manyAccounts?` <span class="cf">${s.handle}</span>`:""}</span>`+
+        `<span class="w">${when}</span>`+
+        `<input type="number" min="1" placeholder="rank" data-c="${s.contest_id}" data-i="${i}"></label>`;
+    }).join("");
+    $("ac-panel").hidden=false;
+    $("msg").textContent=`${acSittings.length} rounds found. Fill in the ranks you remember — blanks are skipped.`;
+  }catch(err){ $("msg").textContent="Error: "+err.message; }
+  finally{ $("go").disabled=false; }
+}
+
+$("ac-est").addEventListener("click",async()=>{
+  if(!acSittings.length)return;
+  $("ac-est").disabled=true;
+  $("msg").textContent="Rebuilding standings from public submissions…";
+  try{
+    const res=await fetch("/api/ac/estimate?handle="+encodeURIComponent(acHandles.join(",")));
+    await streamEvents(res,(name,d)=>{
+      if(name==="progress"){
+        $("msg").textContent=`Rebuilding ${d.done+1} of ${d.total} — ${d.label} `+
+          `(about a minute each the first time, then cached)`;
+      } else if(name==="failed"){ throw new Error(d.error);
+      } else if(name==="done"){
+        let n=0;
+        for(const [cid,rank] of Object.entries(d.ranks||{})){
+          const input=document.querySelector(`#ac-list input[data-c="${cid}"]`);
+          if(input&&!input.value){ input.value=rank; input.classList.add("guess"); n++; }
+        }
+        $("msg").textContent=n
+          ? `Filled ${n} rank${n>1?"s":""}. These are reconstructed, not official — the `+
+            `performance they imply lands within 25 points 92% of the time. Correct any you know.`
+          : "Could not place any sitting; type the ranks instead.";
+      }
+    });
+  }catch(err){ $("msg").textContent="Error: "+err.message; }
+  finally{ $("ac-est").disabled=false; }
+});
+
+$("ac-go").addEventListener("click",async()=>{
+  const filled=[...document.querySelectorAll("#ac-list input")]
+    .filter(i=>i.value.trim()!=="" && Number(i.value)>=1)
+    .sort((a,b)=>Number(a.dataset.i)-Number(b.dataset.i));
+  if(!filled.length){ $("msg").textContent="Type at least one rank first.";return; }
+  const ranks=filled.map(i=>`${i.dataset.c}:${Math.round(Number(i.value))}`).join(",");
+  $("ac-go").disabled=true;$("msg").textContent=`Replaying ${filled.length} rounds…`;
+  try{
+    const d=await (await fetch(`/api/ac/career?handle=${encodeURIComponent(acHandles.join(","))}&ranks=${encodeURIComponent(ranks)}`)).json();
+    if(d.error)throw new Error(d.error);
+    entries=d.entries;real=d.real||[];
+    manyAccounts=(d.handles||[]).length>1;
+    currentHandle=d.real_handle||currentHandle;
+    $("lg-real").textContent=manyAccounts?`${currentHandle}'s real rating`:"your real rating";
+    $("log").innerHTML="";entries.forEach(row);
+    stats(d);draw();$("out").hidden=false;
+    const bad=entries.filter(e=>String(e.confidence).startsWith("unresolved"));
+    $("msg").textContent=bad.length?`${bad.length} round(s) could not be placed: ${bad.map(b=>b.contest_id).join(", ")}`:"";
+    $("foot").innerHTML="AtCoder publishes every finished round's rank-to-performance curve, so a "+
+      "rank converts to a performance essentially exactly. The rating is then AtCoder's own "+
+      "formula over your virtual performance history. Validated against four real careers "+
+      "(125 contests): <b>every rating exact</b>.";
+  }catch(err){ $("msg").textContent="Error: "+err.message; }
+  finally{ $("ac-go").disabled=false; }
+});
+
+
+// ---------- upsolve ----------
+$("up-go").addEventListener("click",async()=>{
+  const h=$("h").value.trim(); if(!h)return;
+  $("up-go").disabled=true;$("up-out").hidden=true;
+  $("up-msg").textContent="Reading every round you have sat…";
+  try{
+    const names=splitHandles(h);
+    const users=(lastNames&&lastNames.length===names.length&&
+                 lastNames.every((n,i)=>n===names[i]))
+      ? lastUsers                                     // the replay already pulled this
+      : (await loadUsers(names))[0];
+    lastUsers=users;lastNames=names;
+    const primary=users.reduce((a,b)=>b.rating.length>a.rating.length?b:a,users[0]);
+    const res=await fetch("/api/upsolve",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        handles:users.map(u=>u.handle),
+        submissions:Object.fromEntries(users.map(u=>[u.handle,u.subs])),
+        real:primary.rating.map(x=>({t:x.ratingUpdateTimeSeconds,rating:x.newRating})),
+        real_handle:primary.handle,
+        merged:mergeReal,
+        prefetched:Object.fromEntries(users.map(u=>[u.handle,
+          {virtual:u.subs, solved:u.solved, real:u.real, ratings:u.ratings}])),
+      })});
+    if(!res.ok||!res.body)throw new Error("server refused the scan");
+    await streamEvents(res,(name,d)=>{
+    if(name==="meta"){ if(d.rounds)
+      $("up-msg").textContent=`${d.rounds} rounds sat · ${d.already_solved} problems already upsolved`; return; }
+    if(name==="progress"){ $("up-msg").textContent=`Scanning round ${d.done+1} of ${d.total}…`; return; }
+    if(name==="failed"){ throw new Error(d.error); }
+    if(name!=="done")return;
+    $("up-msg").textContent="";
+    $("up-lede").innerHTML=d.items.length
+      ? `<b>${d.items.length}</b> problems that most people at your level solved and you did not. `+
+        `Each is measured against the field of its own round, at the rating you held that day — `+
+        `not today's, because ratings drift. ${d.already_solved} you have since upsolved are excluded.`
+      : `Nothing to upsolve: across ${d.rounds} rounds there is no problem your peers solved that you have not.`;
+    $("up-tags").innerHTML=d.tags.slice(0,10).map(t=>
+      `<span class="tg"><b>${t.count}</b> ${t.tag} `+
+      `<span>${Math.round(100*t.mean_rate)}% peer solve</span></span>`).join("");
+    $("up-tags").hidden=!tagsOn;
+    $("up-table").innerHTML=d.items.length?
+      `<thead><tr><th class="l">Problem</th><th>Peers solved</th><th class="bar"></th>`+
+      `<th>Sample</th><th>You were</th><th>Difficulty</th></tr></thead><tbody>`+
+      d.items.map(i=>`<tr>
+        <td class="l"><a href="${CF}/contest/${i.contest_id}/problem/${i.index}" target="_blank" rel="noopener">${i.contest_id}${i.index} — ${i.name}</a>
+          <br><span class="cf"><span class="spoiler tagspoil" role="button" tabindex="0" aria-label="reveal tags"><i class="peek">tags</i><i class="real">${i.tags.slice(0,4).join(" · ")||"untagged"}</i></span>${i.attempted?' <span class="tried">you tried it</span>':""}</span></td>
+        <td>${Math.round(100*i.solve_rate)}%</td>
+        <td class="bar"><span class="meter"><i style="width:${Math.round(100*i.solve_rate)}%"></i></span></td>
+        <td>${i.peers}</td><td>${i.rating_then}</td>
+        <td><span class="spoiler diffspoil" role="button" tabindex="0" aria-label="reveal difficulty"><i class="peek">rating</i><i class="real">${i.difficulty||"—"}</i></span></td></tr>`).join("")+`</tbody>`:"";
+    wireSpoilers();
+    $("up-out").hidden=false;
+    });
+  }catch(err){ $("up-msg").textContent="Error: "+err.message; }
+  finally{ $("up-go").disabled=false; }
+});
+
+// Click any redaction to reveal just that one; the buttons flip the whole column.
+function wireSpoilers(){
+  document.querySelectorAll("#up-out .spoiler").forEach(el=>{
+    el.onclick=()=>el.classList.add("on");
+    el.onkeydown=ev=>{ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();el.classList.add("on");} };
+  });
+}
+function revealAll(sel,btn,on){
+  document.querySelectorAll(sel).forEach(el=>el.classList.toggle("on",on));
+  if(sel.includes("tag"))$("up-tags").hidden=!on;
+  btn.classList.toggle("on",on);
+  btn.setAttribute("aria-pressed",on);
+  btn.textContent=(on?"Hide ":"Reveal ")+(sel.includes("tag")?"tags":"difficulty");
+}
+let tagsOn=false, diffOn=false;
+$("rv-tags").addEventListener("click",()=>{tagsOn=!tagsOn;revealAll(".tagspoil",$("rv-tags"),tagsOn);});
+$("rv-tags").title="Tags name the technique, so they give the approach away";
+$("rv-diff").title="Difficulty anchors how hard you expect it to be";
+$("rv-diff").addEventListener("click",()=>{diffOn=!diffOn;revealAll(".diffspoil",$("rv-diff"),diffOn);});
+
+$("f").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  const h=$("h").value.trim();
+  if(!h)return;
+  if(platform==="ac"){acFind(h);return;}
+  location.hash=h;run(h);
+});
+
+/** Open on the accounts this instance is for -- VRATING_HANDLES in .env -- instead of on an
+ *  empty box. The hash always wins, so looking someone else up still works, and typing over
+ *  the box is never undone. */
+async function boot(){
+  try{
+    const d=await (await fetch("/api/handles")).json();
+    configured={cf:d.handles||[], ac:d.ac_handles||[]};
+  }catch(err){ /* server not answering yet; the box still works by hand */ }
+  const hash=location.hash.length>1?decodeURIComponent(location.hash.slice(1)):"";
+  const h=hash||configured.cf.join(", ");
+  if(!h)return;
+  $("h").value=h;
+  if(!hash)location.hash=h;
+  run(h);
+}
+boot();
+</script>
+</body>
+</html>
