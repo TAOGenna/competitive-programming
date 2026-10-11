@@ -1,0 +1,10 @@
+# Compiled solutions have no extension (make A.cpp -> ./A): ignore every file without a dot.
+*
+!*/
+!*.*
+!Makefile
+*.swp
+# Build outputs of the sample runner.
+.build/
+# Scratch tests for files at this level; contest folders keep their own tests/.
+/tests/

@@ -6,6 +6,7 @@ Here I list the best resources I found during my journey in competitive programm
 * [Recommended Books](#recommended-books)
 * [Interesting Blogs Collection](#blogs-collection)
 * [Templates](#templates)
+* [Tools](#tools)
 * [Useful Links](#useful-links)
 ## Problem Collection
 Each link contains a list of problems for that specific topic. This list was originally created by the user Morass in Codeforces.
@@ -144,6 +145,11 @@ As I solved more and more problems, I wrote templates for known algorithms. Befo
 <div align="center">
   <a href="https://github.com/TAOGenna/competitive-programming/tree/master/Algorithms_templates">Grave of templates</a>
 </div>
+
+## Tools
+Two things I built for myself. Each folder has its own README.
+- [contests](contests/): `make cf2268` or `make abc370` creates a folder for that Codeforces or AtCoder contest, one file per problem from my template, with the samples downloaded. One key in vim saves and runs them.
+- [vrating](vrating/): the rating you'd have if every virtual contest you've ever done had counted.
 
 ## Useful links
 - [Keep track of your solutions in AtCoder](https://kenkoooo.com/atcoder/#/table/)

@@ -7,7 +7,7 @@ imaginary scoreboard. vrating replays those rounds against the field that actual
 chains each result into the next, and draws the career you'd have had.
 
 ```bash
-git clone git@github.com:TAOGenna/vrating.git && cd vrating
+git clone git@github.com:TAOGenna/competitive-programming.git && cd competitive-programming/vrating
 make dev
 ```
 
