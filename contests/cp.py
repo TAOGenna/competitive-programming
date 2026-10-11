@@ -238,7 +238,7 @@ def scaffold(slug, problems):
             f"{c(DIM if samples else YELLOW, count.rjust(10))}  {(stem + '.cpp').ljust(9)}{state}")
     print(rule())
     first = re.sub(r"\W", "", problems[0][0])
-    say(f"cd {slug} && vim {first}.cpp" + c(DIM, f"      <Space>t in vim, or `make {first}`, runs the samples"))
+    say(f"cd {slug} && vim {first}.cpp" + c(DIM, f"    then <Space>t, or `make {first}`, runs the samples"))
     print()
     return 0
 

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 696 537" width="696" height="537" role="img" aria-label="contests/cf158">
+<defs><filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#010409" flood-opacity="0.28"/></filter></defs>
+<g transform="translate(26,26)">
+<rect width="644.4" height="476.6" rx="11" fill="#161b22" stroke="#30363d" filter="url(#s)"/>
+<rect x="0.5" y="38" width="643.4" height="1" fill="#262c34"/>
+<circle cx="20" cy="19.0" r="5.5" fill="#ff5f57" opacity="0.92"/>
+<circle cx="38" cy="19.0" r="5.5" fill="#febc2e" opacity="0.92"/>
+<circle cx="56" cy="19.0" r="5.5" fill="#28c840" opacity="0.92"/>
+<text x="322.2" y="23.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#768390">contests/cf158</text>
+<text x="22.0" y="71.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#56d364">$</text>
+<text x="37.8" y="71.7" textLength="31.6" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#ffffff" font-weight="700">make</text>
+<text x="77.3" y="71.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#ffffff" font-weight="700">A</text>
+<text x="37.8" y="112.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#ffffff" font-weight="700">A</text>
+<text x="567.1" y="112.7" textLength="39.5" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">cf158</text>
+<text x="37.8" y="133.2" textLength="568.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">────────────────────────────────────────────────────────────────────────</text>
+<text x="37.8" y="153.7" textLength="63.2" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">compiled</text>
+<text x="108.9" y="153.7" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">in</text>
+<text x="132.6" y="153.7" textLength="31.6" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">1.0s</text>
+<rect x="36.8" y="180.5" width="41.5" height="18.4" rx="4" fill="#3fb950"/>
+<text x="45.7" y="194.7" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#0d1117" font-weight="700">AC</text>
+<text x="93.1" y="194.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">1</text>
+<text x="567.1" y="194.7" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">20</text>
+<text x="590.8" y="194.7" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">ms</text>
+<rect x="36.8" y="201.0" width="41.5" height="18.4" rx="4" fill="#f85149"/>
+<text x="45.7" y="215.2" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#0d1117" font-weight="700">WA</text>
+<text x="93.1" y="215.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">2</text>
+<text x="567.1" y="215.2" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">21</text>
+<text x="590.8" y="215.2" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">ms</text>
+<text x="37.8" y="256.2" textLength="15.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">──</text>
+<text x="61.5" y="256.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">2</text>
+<text x="77.3" y="256.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">·</text>
+<text x="93.1" y="256.2" textLength="39.5" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">wrong</text>
+<text x="140.5" y="256.2" textLength="47.4" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">answer</text>
+<text x="195.8" y="256.2" textLength="410.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">────────────────────────────────────────────────────</text>
+<text x="37.8" y="276.7" textLength="39.5" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">input</text>
+<text x="37.8" y="297.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="53.6" y="297.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">4</text>
+<text x="69.4" y="297.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">2</text>
+<text x="37.8" y="317.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="53.6" y="317.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">0</text>
+<text x="69.4" y="317.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">0</text>
+<text x="85.2" y="317.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">0</text>
+<text x="101.0" y="317.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">0</text>
+<text x="37.8" y="338.2" textLength="63.2" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">expected</text>
+<text x="330.1" y="338.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="345.9" y="338.2" textLength="39.5" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">yours</text>
+<text x="37.8" y="358.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="53.6" y="358.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#56d364">0</text>
+<text x="330.1" y="358.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="345.9" y="358.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#ff7b72">4</text>
+<text x="37.8" y="379.2" textLength="47.4" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">stderr</text>
+<text x="37.8" y="399.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">│</text>
+<text x="53.6" y="399.7" textLength="63.2" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">solve:78</text>
+<text x="124.7" y="399.7" textLength="39.5" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">[cut]</text>
+<text x="172.1" y="399.7" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">=</text>
+<text x="187.9" y="399.7" textLength="23.7" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">[0]</text>
+<text x="37.8" y="440.7" textLength="568.8" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">────────────────────────────────────────────────────────────────────────</text>
+<rect x="36.8" y="447.0" width="65.2" height="18.4" rx="4" fill="#f85149"/>
+<text x="45.7" y="461.2" textLength="47.4" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#0d1117" font-weight="700">FAILED</text>
+<text x="116.8" y="461.2" textLength="23.7" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">1/2</text>
+<text x="148.4" y="461.2" textLength="47.4" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#d7dde4">passed</text>
+<text x="219.5" y="461.2" textLength="63.2" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">failing:</text>
+<text x="290.6" y="461.2" textLength="7.9" lengthAdjust="spacingAndGlyphs" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.1" fill="#768390">2</text>
+</g></svg>
