@@ -81,7 +81,7 @@ make dev
 
 ### cf-heatmap
 
-**A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem, outlines the days that include an unrated problem, and lists the day's problems on hover. A Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
+**A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem and lists the day's problems on hover. A Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
 
 [Read more →](cf-heatmap/README.md)
 

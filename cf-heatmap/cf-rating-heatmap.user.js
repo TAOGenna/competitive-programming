@@ -74,12 +74,6 @@
         return TIERS.find(([min]) => best >= min)[1];
     }
 
-    // The colour only sees rated problems, so a day with an unrated first solve
-    // (gym, or a contest whose ratings are not out yet) may read too low.
-    function hasUnrated(problems) {
-        return problems.some((p) => !p.repeat && !p.rating);
-    }
-
     // [first day, day after the last] to draw: a calendar year, or for year 0
     // the last twelve months, starting on a Sunday as Codeforces does.
     function dayRange(year, today) {
@@ -200,10 +194,6 @@
                     fill: problems ? dayColor(problems) : EMPTY,
                 });
                 if (problems) rect.dataset.day = dayKey(d);
-                if (problems && hasUnrated(problems)) {
-                    rect.setAttribute("stroke", "currentColor");
-                    rect.setAttribute("stroke-dasharray", "2 2");
-                }
                 svg.append(rect);
                 if (d.getDate() === 1) {
                     const month = d.toLocaleString("en-US", { month: "short" });
@@ -214,11 +204,7 @@
             svg.onmouseleave = (event) => {
                 if (!tip.contains(event.relatedTarget)) hideTip();
             };
-            const caption = el("div", {
-                textContent: "Dashed outline: includes an unrated problem, so the colour may be too low.",
-                style: "margin:5px;font-size:12px;opacity:0.7",
-            });
-            body.replaceChildren(svg, caption);
+            body.replaceChildren(svg);
         }
 
         const thisYear = new Date().getFullYear();
@@ -262,10 +248,6 @@
         assert(color(1199) === TIERS[9][1] && color(1200) === TIERS[8][1], "tier boundary");
         assert(color(3500) === TIERS[0][1], "top tier");
         assert(dayColor([{ rating: 2400, repeat: true }]) === TIERS[9][1], "repeats do not colour a day");
-
-        assert(hasUnrated(days["2024-01-15"]), "unrated first solve is flagged");
-        assert(!hasUnrated(days["2024-01-16"]), "a rated repeat is not");
-        assert(!hasUnrated([{ rating: 0, repeat: true }]), "an unrated repeat is not");
 
         const [start, end] = dayRange(0, new Date(2025, 9, 8, 15));
         assert(start.getDay() === 0 && dayKey(start) === "2024-10-13", "starts on a Sunday");

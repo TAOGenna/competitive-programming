@@ -8,7 +8,7 @@ A Safari port of [Codeforces-Rating-Based-Heatmap-Extension](https://github.com/
 
 - **The maximum, not the average.** A day takes the tier of the hardest problem solved that day. An average would paint an 800 plus a 2000 as a 1400, a tier of problem you never solved, and it would punish warm-ups.
 - **First solves only.** A problem you had already solved on an earlier day doesn't colour the day; it shows grey in the tooltip.
-- **Unrated problems** (gym problems, or a contest whose ratings are not out yet) count as 0, so they can't raise a day's colour. Any day with an unrated first solve gets a **dashed outline**, meaning the colour may be too low.
+- **Unrated problems** (gym problems, or a contest whose ratings are not out yet) count as 0, so they can't raise a day's colour. The tooltip marks them "(unrated)".
 - **Volume** isn't in the colour. The tooltip header says how many problems the day had, and lists them.
 
 | Rating | Colour |
