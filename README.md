@@ -83,6 +83,10 @@ make dev
 
 **A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem and lists the day's problems on hover. A Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
 
+<p align="center">
+  <img src=".github/readme/cf-heatmap.png" alt="The heatmap for 2022, with a tooltip listing the six problems solved on 2022-05-23" width="720">
+</p>
+
 [Read more →](cf-heatmap/README.md)
 
 ## Library

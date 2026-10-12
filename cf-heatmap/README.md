@@ -4,6 +4,10 @@ A heatmap on every Codeforces profile where each day is coloured by the hardest 
 
 A Safari port of [Codeforces-Rating-Based-Heatmap-Extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension) (MIT, gopikrishna000), written as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app, so it needs no Xcode. It also drops the 280 KB d3 dependency.
 
+<p align="center">
+  <img src="../.github/readme/cf-heatmap.png" alt="The heatmap for 2022, with a tooltip listing the six problems solved on 2022-05-23" width="720">
+</p>
+
 ## How a day is coloured
 
 - **The maximum, not the average.** A day takes the tier of the hardest problem solved that day. An average would paint an 800 plus a 2000 as a 1400, a tier of problem you never solved, and it would punish warm-ups.
