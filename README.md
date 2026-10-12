@@ -23,7 +23,7 @@
 |:--|:--|
 | [`contests/`](contests/) | A contest workspace: one command fetches a Codeforces or AtCoder contest, one key runs the samples |
 | [`vrating/`](vrating/) | The rating you'd have if every virtual contest you've ever done had counted |
-| [`cf-heatmap/`](cf-heatmap/) | A Codeforces profile heatmap for Safari, coloured by the hardest problem you solved each day |
+| [`cf-heatmap/`](cf-heatmap/) | Codeforces and AtCoder profile heatmaps for Safari, coloured by the hardest problem you solved each day |
 | [`Algorithms_templates/`](Algorithms_templates/) | 33 C++ templates for known algorithms |
 | [`Collection_of_problems/`](Collection_of_problems/) | 2,496 problems sorted into 98 topics |
 | [`Interesting_blogs/`](Interesting_blogs/) | 140 blog posts worth reading, in 8 categories |
@@ -81,10 +81,14 @@ make dev
 
 ### cf-heatmap
 
-**A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem and lists the day's problems on hover. A Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
+**A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem and lists the day's problems on hover. The Codeforces one is a Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), and there is an AtCoder one too. Both are userscripts for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
 
 <p align="center">
-  <img src=".github/readme/cf-heatmap.png" alt="The heatmap for 2022, with a tooltip listing the six problems solved on 2022-05-23" width="720">
+  <img src=".github/readme/cf-heatmap.png" alt="The Codeforces heatmap for 2022, with a tooltip listing the six problems solved on 2022-05-23" width="720">
+</p>
+
+<p align="center">
+  <img src=".github/readme/atcoder-heatmap.png" alt="The AtCoder heatmap for 2019, with a tooltip listing the four problems solved on 2019-07-21" width="720">
 </p>
 
 [Read more →](cf-heatmap/README.md)
