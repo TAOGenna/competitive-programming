@@ -5,7 +5,7 @@
 
 <p align="center">
   Here I list the best resources I found during my journey in competitive programming,<br>
-  plus two tools I built along the way. I hope you like it :)
+  plus three tools I built along the way. I hope you like it :)
 </p>
 
 <p align="center">
@@ -23,6 +23,7 @@
 |:--|:--|
 | [`contests/`](contests/) | A contest workspace: one command fetches a Codeforces or AtCoder contest, one key runs the samples |
 | [`vrating/`](vrating/) | The rating you'd have if every virtual contest you've ever done had counted |
+| [`cf-heatmap/`](cf-heatmap/) | A Codeforces profile heatmap for Safari, coloured by the hardest problem you solved each day |
 | [`Algorithms_templates/`](Algorithms_templates/) | 33 C++ templates for known algorithms |
 | [`Collection_of_problems/`](Collection_of_problems/) | 2,496 problems sorted into 98 topics |
 | [`Interesting_blogs/`](Interesting_blogs/) | 140 blog posts worth reading, in 8 categories |
@@ -31,7 +32,7 @@
 
 ## Tools
 
-Two things I built for myself. Each folder has its own README with the details.
+Three things I built for myself. Each folder has its own README with the details.
 
 ### contests
 
@@ -77,6 +78,12 @@ make dev
 ```
 
 [Read more →](vrating/README.md)
+
+### cf-heatmap
+
+**A heatmap on your Codeforces profile, coloured by the hardest problem you solved each day.** The built-in one only counts problems, so ten easy ones look better than one hard one. This one paints each day with the rating tier of its hardest problem, outlines the days that include an unrated problem, and lists the day's problems on hover. A Safari port of [gopikrishna000's Chrome extension](https://github.com/gopikrishna000/Codeforces-Rating-Based-Heatmap-Extension), as a userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
+
+[Read more →](cf-heatmap/README.md)
 
 ## Library
 
