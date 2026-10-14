@@ -23,6 +23,9 @@
 |:--|:--|
 | [`contests/`](contests/) | A contest workspace: one command fetches a Codeforces or AtCoder contest, one key runs the samples |
 | [`vrating/`](vrating/) | The rating you'd have if every virtual contest you've ever done had counted |
+| [`cf-theme/`](cf-theme/) | A dark and a light theme for Codeforces in Safari, with a switch, rank colours and coloured verdicts |
+| [`cf-predictor/`](cf-predictor/) | A rating-change column on Codeforces standings for Safari, computed in the browser with no server |
+| [`cf-progress/`](cf-progress/) | A skyline in the Codeforces contests table for Safari: one bar per problem, filled by what you solved in contest and what you upsolved |
 | [`cf-heatmap/`](cf-heatmap/) | Codeforces and AtCoder profile heatmaps for Safari, coloured by the hardest problem you solved each day |
 | [`Algorithms_templates/`](Algorithms_templates/) | 33 C++ templates for known algorithms |
 | [`Collection_of_problems/`](Collection_of_problems/) | 2,496 problems sorted into 98 topics |
@@ -78,6 +81,40 @@ make dev
 ```
 
 [Read more →](vrating/README.md)
+
+### cf-theme
+
+**A dark and a light theme for Codeforces, with a button to switch.** Dark is the default. Light is a calmer paper look, with a pastel bar under every menu item. Both put back the colours that dark themes usually wipe out: rank colours on handles, green `+` and red `-x` in the standings, and coloured verdicts. A userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app, starting from Nerdblud's *Codeforces Ultimate Dark Theme*.
+
+<p align="center">
+  <img src=".github/readme/cf-theme-light.png" alt="The Codeforces standings in the light theme" width="720">
+</p>
+
+<p align="center">
+  <img src=".github/readme/cf-theme-dark.png" alt="The same standings page in the dark theme" width="720">
+</p>
+
+[Read more →](cf-theme/README.md)
+
+### cf-predictor
+
+**A Δ column on Codeforces standings that shows each contestant's rating change before it's applied.** The Safari guide for CF-Predictor depended on a server that is gone, so this one runs Codeforces' rating system in the browser, using only the official API. Accurate to a few points for Div. 1 and for ratings above 1600; below that, Codeforces' hidden bonus for new accounts gets in the way. A userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
+
+<p align="center">
+  <img src=".github/readme/cf-predictor.png" alt="The standings with a green Δ column of predicted rating changes" width="720">
+</p>
+
+[Read more →](cf-predictor/README.md)
+
+### cf-progress
+
+**A skyline of your progress in every row of the contests table.** One bar per problem, as tall as the problem's rating, solid green if you solved it in the contest and hatched if you solved it later. A caret marks the first problem you haven't solved, and a contest with everything solved gets a gold ring. A userscript for the [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) app.
+
+<p align="center">
+  <img src=".github/readme/cf-progress.png" alt="The Past contests table with a skyline strip for two contests" width="720">
+</p>
+
+[Read more →](cf-progress/README.md)
 
 ### cf-heatmap
 
